@@ -38,6 +38,12 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-location",
+          {
+            "locationWhenInUsePermission": "Allow AdventureLog to use your location to show nearby adventures and place memories on your map."
+          }
       ]
     ],
     "experiments": {

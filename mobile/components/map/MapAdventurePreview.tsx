@@ -1,0 +1,175 @@
+import { Ionicons } from "@expo/vector-icons";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+
+import { MapAdventure } from "@/data/map";
+import { AppColors, spacing, useAppTheme } from "@/theme";
+
+type MapAdventurePreviewProps = {
+    adventure: MapAdventure;
+    onClose: () => void;
+};
+
+const categoryLabels: Record<MapAdventure["category"], string> = {
+    hiking: "Hiking",
+    sports: "Sports",
+    travel: "Travel",
+    food: "Food",
+    outdoors: "Outdoors"
+};
+
+export function MapAdventurePreview({adventure, onClose}: MapAdventurePreviewProps) {
+    const {colors} = useAppTheme();
+    const styles = createStyles(colors);
+
+    return(
+        <View style={styles.card}>
+            <View style={styles.handle} />
+
+            <View style={styles.cardContent}>
+                <Image source={{uri: adventure.imageUrl}} style={styles.image} />
+
+                <View style={styles.details}>
+                    <View style={styles.topRow}>
+                        <Text style={styles.category}>
+                            {categoryLabels[adventure.category]}
+                        </Text>
+
+                        <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="Close adventure preview"
+                            onPress={onClose}
+                            hitSlop={10}
+                        >
+                            <Ionicons name="close" size={20} color={colors.textMuted} />
+                        </Pressable>
+                    </View>
+
+                    <Text style={styles.card} numberOfLines={2}>
+                        {adventure.title}
+                    </Text>
+
+                    <View style={styles.locationRow}>
+                        <Ionicons name="location-outline" size={14} color={colors.textMuted} />
+
+                        <Text numberOfLines={1} style={styles.location}>
+                            {adventure.location}
+                        </Text>
+                    </View>
+
+                    <Text style={styles.date}>{adventure.date}</Text>
+                </View>
+            </View>
+
+            <Pressable
+                style={({pressed}) => [styles.openButton, pressed && styles.pressed]}
+                accessibilityRole="button"
+            >
+                <Text style={styles.openButtonText}>
+                    Open memory
+                </Text>
+
+                <Ionicons name="arrow-forward" size={17} color={colors.background} />
+            </Pressable>
+        </View>
+    );
+}
+
+function createStyles(colors: AppColors) {
+    return StyleSheet.create({
+        card: {
+            position: "absolute",
+            right: spacing.lg,
+            bottom: spacing.lg,
+            left: spacing.lg,
+            padding: spacing.md,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 28,
+            shadowColor: "#000000",
+            shadowOffset: {
+                width: 0,
+                height: 8
+            },
+            shadowOpacity: 0.18,
+            shadowRadius: 16,
+            elevation: 10,
+        },
+        handle: {
+            width: 40,
+            height: 4,
+            alignSelf: "center",
+            marginBottom: spacing.md,
+            backgroundColor: colors.border,
+            borderRadius: 999,
+        },
+        cardContent: {
+            flexDirection: "row",
+            gap: spacing.md,
+        },
+        image: {
+            width: 104,
+            height: 112,
+            backgroundColor: colors.surfaceMuted,
+            borderRadius: 18,
+        },
+        details: {
+            flex: 1,
+            paddingVertical: 2,
+        },
+        topRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+        },
+        category: {
+            color: colors.clay,
+            fontSize: 11,
+            fontWeight: "800",
+            letterSpacing: 0.9,
+            textTransform: "uppercase"
+        },
+        title: {
+            marginTop: 6,
+            color: colors.textPrimary,
+            fontSize: 19,
+            fontWeight: "800",
+            lineHeight: 23,
+        },
+        locationRow: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 3,
+            marginTop: spacing.sm,
+        },
+        location: {
+            flex: 1,
+            color: colors.textSecondary,
+            fontSize: 12,
+            fontWeight: "600",
+        },
+        date: {
+            marginTop: 5,
+            color: colors.textMuted,
+            fontSize: 12,
+        },
+        openButton: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: spacing.sm,
+            minHeight: 48,
+            marginTop: spacing.md,
+            backgroundColor: colors.forest,
+            borderRadius: 17,
+        },
+        openButtonText: {
+            color: colors.background,
+            fontSize: 14,
+            fontWeight: "800"
+        },
+        pressed: {
+            opacity: 0.85,
+        }
+    });
+}
