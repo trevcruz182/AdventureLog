@@ -1,0 +1,25 @@
+services:
+  adventurelog-db:
+    image: postgres:17
+    container_name: adventurelog-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: adventurelog
+      POSTGRES_USER: adventurelog
+      POSTGRES_PASSWORD: adventurelog_dev
+    ports:
+      - "5434:5432"
+    volumes:
+      - adventurelog_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U adventurelog -d adventurelog",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  adventurelog_postgres_data:
