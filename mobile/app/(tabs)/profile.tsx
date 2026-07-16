@@ -1,4 +1,3 @@
-// Temp code so I can test the dark vs light mode styles. Will later be replaced with settings toggle
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View, Alert, Image, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -9,6 +8,7 @@ import { ProfileCollectionCard } from "@/components/profile/ProfileCollectionCar
 import { ProfileStats } from "@/components/profile/ProfileStats";
 import { SettingsRow } from "@/components/profile/SettingsRow";
 import { profileAchievements, profileCollections, profileStats } from "@/data/profile";
+import { useAuth } from "@/features/auth/AuthProvider";
 
 import { AppearancePreference, AppColors, spacing, useAppTheme } from "@/theme";
 
@@ -21,6 +21,8 @@ const options: Array<{label: string; value: AppearancePreference;}> = [
 export default function ProfileScreen() {
     const {colors, resolvedAppearance} = useAppTheme();
     const styles = createStyles(colors);
+
+    const {user, logout} = useAuth();
 
     return(
         <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -58,11 +60,15 @@ export default function ProfileScreen() {
                 </View>
 
                 <Text style={styles.name}>
-                  Trevor Cruz
+                  {user?.display_name ?? "AdventureLog User"}
                 </Text>
 
                 <Text style={styles.username}>
-                  @trevorwanders
+                  @{user?.username ?? "explorer"}
+                </Text>
+
+                <Text style={styles.email}>
+                  {user?.email}
                 </Text>
 
                 <Text style={styles.bio}>
@@ -171,7 +177,17 @@ export default function ProfileScreen() {
               <Pressable
                 accessibilityRole="button"
                 onPress={() => {
-                  Alert.alert("Sign out", "Authentication will be connected when the backend is added.");
+                  Alert.alert("Sign out?", "You can sign back in at any time.", [
+                    {
+                      text: "Cancel",
+                      style: "cancel"
+                    },
+                    {
+                      text: "Sign out",
+                      style: "destructive",
+                      onPress: () => void logout(),
+                    }
+                  ]);
                 }}
                 style={({pressed}) => [styles.signOutButton, pressed && styles.pressed]}
               >
@@ -265,6 +281,12 @@ function createStyles(colors: AppColors) {
         color: colors.textPrimary,
         fontSize: 24,
         fontWeight: "800"
+      },
+      email: {
+        marginTop: 5,
+        color: colors.textSecondary,
+        fontSize: 12,
+        fontWeight: "600"
       },
       username: {
         marginTop: 4,

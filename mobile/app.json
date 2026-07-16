@@ -41,15 +41,21 @@
       ],
       [
         "expo-location",
-          {
-            "locationWhenInUsePermission": "Allow AdventureLog to use your location to show nearby adventures and place memories on your map."
-          }
+        {
+          "locationWhenInUsePermission": "Allow AdventureLog to use your location to show nearby adventures and place memories on your map."
+        }
       ],
       [
         "expo-image-picker",
         {
           "photosPermission": "Allow AdventureLog to access your photos so you can preserve memories from your adventures.",
           "cameraPermission": "Allow AdventureLog to use your camera so you can capture adventure memories."
+        }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true
         }
       ]
     ],
