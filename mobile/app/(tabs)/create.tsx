@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as Haptics from "expo-haptics";
 import { useState } from "react";
 import { 
+    ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
     Platform,
@@ -14,6 +15,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {useForm, useWatch} from "react-hook-form";
+import { router } from "expo-router";
+
+import { useCreateAdventure } from "@/features/adventures/useAdventures";
+import { ApiError } from "@/lib/api/ApiError";
+import type { AdventureCreatePayload } from "@/types/adventure";
 
 import { AdventureBasicsStep } from "@/components/create/AdventureBasicsStep";
 import { AdventurePhotosStep } from "@/components/create/AdventurePhotosStep";
@@ -70,6 +76,8 @@ export default function CreateScreen() {
 
     const reviewValues = useWatch({control}) as CreateAdventureFormValues;
 
+    const createAdventureMutation = useCreateAdventure();
+
     async function goForward() {
         const fields = stepFields[currentStep];
 
@@ -96,11 +104,69 @@ export default function CreateScreen() {
     }
 
     async function submitAdventure(values: CreateAdventureFormValues) {
-        console.log("Adventure ready for API:", values);
+        if(values.photos.length > 0) {
+            const shouldContinue = await new Promise<boolean>((resolve) => {
+                Alert.alert("Photo upload is not connected yet", "The adventure will be saved now, but its selected photos will not be included. Photo uploading is the next feature we'll connect.", [
+                    {
+                        text: "Go back",
+                        style: "cancel",
+                        onPress: () => resolve(false),
+                    },
+                    {
+                        text: "Save without photos",
+                        onPress: () => resolve(true)
+                    },
+                ], {
+                    cancelable: true,
+                    onDismiss: () => resolve(false)
+                })
+            });
 
-        setIsSaved(true);
+            if(!shouldContinue) {
+                return;
+            }
+        }
 
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        const payload: AdventureCreatePayload = {
+            title: values.title.trim(),
+            description: values.description.trim(),
+            category: values.category,
+            status: "completed",
+
+            adventure_date: values.date,
+            location_name: values.locationName.trim(),
+
+            latitude: roundCoordinate(values.latitude),
+            longitude: roundCoordinate(values.longitude),
+
+            rating: values.rating,
+            is_favorite: values.isFavorite,
+
+            photos: [] // Photo upload currently catches only device-local URIs for photos. Real photo storage will come later.
+        };
+
+        try {
+            await createAdventureMutation.mutateAsync(payload);
+
+            setIsSaved(true);
+
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        catch (error) {
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+
+            const message = error instanceof ApiError ? error.message : "AdventureLog could not save this adventure. Check your connection and try again.";
+
+            Alert.alert("Adventure not saved", message);
+        }
+    }
+
+    function roundCoordinate(value: number | null): number | null {
+        if(value === null) {
+            return null;
+        }
+
+        return Number(value.toFixed(6));
     }
 
     function startAnotherAdventure() {
@@ -112,7 +178,7 @@ export default function CreateScreen() {
     if(isSaved) {
         return(
             <SafeAreaView style={styles.safeArea} edges={["top"]}>
-                <View style={styles.successContainer}>
+                {/* <View style={styles.successContainer}>
                     <View style={styles.successIcon}>
                         <Ionicons name="checkmark" size={36} color={colors.background} />
                     </View>
@@ -134,6 +200,35 @@ export default function CreateScreen() {
 
                         <Text style={styles.primaryButtonText}>
                             Log another adventure
+                        </Text>
+                    </Pressable>
+                </View> */}
+
+                <View style={styles.sucessActions}>
+                    <Pressable
+                        onPress={() => {
+                            reset(CreateAdventureDefaultValues);
+                            setCurrentStep(1);
+                            setIsSaved(false);
+                            router.navigate("/(tabs)/journal");
+                        }}
+                        style={({pressed}) => [styles.primaryButton, styles.successActionButton, pressed && styles.pressed]}
+                    >
+                        <Ionicons name="book-outline" size={19} color={colors.background} />
+
+                        <Text style={styles.primaryButtonText}>
+                            View in Journal
+                        </Text>
+                    </Pressable>
+
+                    <Pressable
+                        onPress={startAnotherAdventure}
+                        style={({pressed}) => [styles.secondarySuccessButton, pressed && styles.pressed]}
+                    >
+                        <Ionicons name="add" size={19} color={colors.textPrimary} />
+
+                        <Text style={styles.secondarySuccessButtonText}>
+                            Log another
                         </Text>
                     </Pressable>
                 </View>
@@ -245,14 +340,21 @@ export default function CreateScreen() {
                         </Pressable>
                     ): (
                         <Pressable
+                            disabled={createAdventureMutation.isPending}
                             onPress={handleSubmit(submitAdventure)}
-                            style={({pressed}) => [styles.primaryButton, pressed && styles.pressed]}
+                            style={({pressed}) => [styles.primaryButton, pressed && styles.pressed, createAdventureMutation.isPending && styles.buttonDisabled]}
                         >
-                            <Ionicons name="bookmark-outline" size={18} color={colors.background} />
+                            {createAdventureMutation.isPending ? (
+                                <ActivityIndicator size="small" color={colors.background} />
+                            ): (
+                            <>
+                                <Ionicons name="bookmark-outline" size={18} color={colors.background} />
 
-                            <Text style={styles.primaryButtonText}>
-                                Save adventure
-                            </Text>
+                                <Text style={styles.primaryButtonText}>
+                                    Save adventure
+                                </Text>
+                            </>
+                            )}
                         </Pressable>
                     )}
                 </View>
@@ -350,6 +452,30 @@ function createStyles(colors: AppColors) {
             fontSize: 14,
             fontWeight: "800"
         },
+        sucessActions: {
+            alignSelf: "stretch",
+            gap: spacing.md,
+            marginTop: spacing.xl
+        },
+        successActionButton: {
+            flex: 0
+        },
+        secondarySuccessButton: {
+            minHeight: 54,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: spacing.sm,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 18
+        },
+        secondarySuccessButtonText: {
+            color: colors.textPrimary,
+            fontSize: 14,
+            fontWeight: "800"
+        },
         successContainer: {
             flex: 1,
             alignItems: "center",
@@ -394,6 +520,9 @@ function createStyles(colors: AppColors) {
         },
         pressed: {
             opacity: 0.84
+        },
+        buttonDisabled: {
+            opacity: 0.65
         }
     });
 }

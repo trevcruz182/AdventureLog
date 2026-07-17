@@ -1,18 +1,23 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
-import { Pressable, SectionList, StyleSheet, Text, TextInput, View, ScrollView } from "react-native";
+import { Pressable, SectionList, StyleSheet, Text, TextInput, View, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 
 import { JournalAdventureCard } from "@/components/journal/JournalAdventureCard";
 import { AdventureCategory } from "@/data/home";
 import { JournalAdventure, journalAdventures } from "@/data/journal";
+import { useAdventures } from "@/features/adventures/useAdventures";
+import { ApiError } from "@/lib/api/ApiError";
+import type { Adventure } from "@/types/adventure";
 import { AppColors, spacing, useAppTheme } from "@/theme";
+import { RefreshControl } from "react-native-gesture-handler";
 
 type CategoryFilter = "all" | AdventureCategory;
 
 type JournalSection = {
     title: string;
-    data: JournalAdventure[];
+    data: Adventure[];
 }
 
 const categoryFilters: Array<{
@@ -56,24 +61,41 @@ export default function JournalScreen() {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
+    const {
+        data,
+        isLoading,
+        isError,
+        error,
+        refetch,
+        isRefetching
+    } = useAdventures({limit: 100});
+
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
 
     const sections = useMemo<JournalSection[]>(() => {
         const normalizedQuery = searchQuery.trim().toLowerCase();
 
-        const filteredAdventures = journalAdventures.filter((adventure) => {
+        const adventures: Adventure[] = data?.items ?? [];
+
+        const filteredAdventures = adventures.filter((adventure) => {
             const matchesCategory = selectedCategory === "all" || adventure.category === selectedCategory;
 
-            const matchesSearch = normalizedQuery.length === 0 || adventure.title.toLowerCase().includes(normalizedQuery) ||
-                                    adventure.location.toLowerCase().includes(normalizedQuery) ||
+            const matchesSearch = normalizedQuery.length === 0 ||
+                                    adventure.title.toLowerCase().includes(normalizedQuery) ||
+                                    adventure.location_name.toLowerCase().includes(normalizedQuery) ||
                                     adventure.description.toLowerCase().includes(normalizedQuery);
 
             return matchesCategory && matchesSearch;
         });
 
-        const grouped = filteredAdventures.reduce<Record<string, JournalAdventure[]>>((groups, adventure) => {
-            const sectionTitle = `${adventure.month} ${adventure.year}`;
+        const grouped = filteredAdventures.reduce((groups, adventure) => {
+            const [year, month] = adventure.adventure_date.split("-").map(Number);
+
+            const sectionTitle = new Intl.DateTimeFormat("en-US", {
+                month: "long",
+                year: "numeric"
+            }).format(new Date(year, month-1, 1));
 
             if(!groups[sectionTitle]) {
                 groups[sectionTitle] = [];
@@ -82,15 +104,65 @@ export default function JournalScreen() {
             groups[sectionTitle].push(adventure);
 
             return groups;
-        }, {});
+        }, {} as Record<string, Adventure[]>);
 
-        return Object.entries(grouped).map(([title, data]) => ({
+        return (Object.entries(grouped) as [string, Adventure[]][]).map(([title, sectionData]) => ({
             title,
-            data,
+            data: sectionData
         }));
-    }, [searchQuery, selectedCategory]);
+    }, [data, searchQuery, selectedCategory]);
 
     const resultCount = sections.reduce((total, section) => total + section.data.length, 0);
+    const hasActiveFilters = searchQuery.trim().length > 0 || selectedCategory !== "all";
+
+    if(isLoading) {
+        return(
+            <SafeAreaView style={styles.safeArea} edges={["top"]}>
+                <View style={styles.centerState}>
+                    <ActivityIndicator size="small" color={colors.forest} />
+
+                    <Text style={styles.centerStateTitle}>
+                        Opening your journal...
+                    </Text>
+
+                    <Text style={styles.centerStateDescription}>
+                        Gathering your saved adventures.
+                    </Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    if(isError) {
+        const message = error instanceof ApiError ? error.message : "AdventureLog could not load your journal.";
+
+        return (
+            <SafeAreaView style={styles.safeArea} edges={["top"]}>
+                <View style={styles.centerState}>
+                    <View style={styles.errorIcon}>
+                        <Ionicons name="cloud-offline-outline" size={31} color={colors.danger} />
+                    </View>
+
+                    <Text style={styles.centerStateTitle}>
+                        Journal unavailable
+                    </Text>
+
+                    <Text style={styles.centerStateDescription}>
+                        {message}
+                    </Text>
+
+                    <Pressable
+                        onPress={() => void refetch()}
+                        style={({pressed}) => [styles.retryButton, pressed && styles.pressed]}
+                    >
+                        <Text style={styles.retryButtonText}>
+                            Try again
+                        </Text>
+                    </Pressable>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -247,27 +319,45 @@ export default function JournalScreen() {
                         </View>
 
                         <Text style={styles.emptyTitle}>
-                            No memories found
+                            {hasActiveFilters ? "No memories found" : "Your journal is waiting"}
                         </Text>
 
                         <Text style={styles.emptyDescription}>
-                            Try another search or category to rediscover an adventure.
+                            {hasActiveFilters ? "Try another search or category to rediscover an adventure." : "Log your first adventure and it will appear here as part of your personal timeline."}
                         </Text>
 
-                        <Pressable
-                            onPress={() => {
-                                setSearchQuery("");
-                                setSelectedCategory("all");
-                            }}
-                            style={({pressed}) => [
-                                styles.resetButton, pressed && styles.pressed
-                            ]}
-                        >
-                            <Text style={styles.resetButtonText}>
-                                Reset filters
-                            </Text>
-                        </Pressable>
+                        {hasActiveFilters ? (
+                            <Pressable
+                                onPress={() => {
+                                    setSearchQuery("");
+                                    setSelectedCategory("all");
+                                }}
+                                style={({pressed}) => [
+                                    styles.resetButton, pressed && styles.pressed
+                                ]}
+                            >
+                                <Text style={styles.resetButtonText}>
+                                    Reset filters
+                                </Text>
+                            </Pressable>
+                        ): (
+                            <Pressable
+                                onPress={() => router.navigate("/(tabs)/create")}
+                                style={({pressed}) => [styles.resetButton, pressed && styles.pressed]}
+                            >
+                                <Text style={styles.resetButtonText}>
+                                    Log an adventure
+                                </Text>
+                            </Pressable>
+                        )}
                     </View>
+                }
+                refreshControl={
+                    <RefreshControl 
+                        refreshing={isRefetching}
+                        onRefresh={() => void refetch()}
+                        tintColor={colors.forest}
+                    />
                 }
             />
         </SafeAreaView>
@@ -455,6 +545,47 @@ function createStyles(colors: AppColors) {
             color: colors.background,
             fontSize: 13,
             fontWeight: "800",
+        },
+        centerState: {
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: spacing.xl,
+        },
+        errorIcon: {
+            width: 68,
+            height: 68,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: colors.surfaceMuted,
+            borderRadius: 24,
+        },
+        centerStateTitle: {
+            marginTop: spacing.lg,
+            color: colors.textPrimary,
+            fontSize: 21,
+            fontWeight: "800",
+            textAlign: "center"
+        },
+        centerStateDescription: {
+            maxWidth: 300,
+            marginTop: spacing.sm,
+            color: colors.textSecondary,
+            fontSize: 14,
+            lineHeight: 21,
+            textAlign: "center"
+        },
+        retryButton: {
+            marginTop: spacing.lg,
+            paddingHorizontal: spacing.xl,
+            paddingVertical: spacing.md,
+            backgroundColor: colors.forest,
+            borderRadius: 999
+        },
+        retryButtonText: {
+            color: colors.background,
+            fontSize: 13,
+            fontWeight: "800"
         }
     });
 }

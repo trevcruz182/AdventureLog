@@ -2,15 +2,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { JournalAdventure } from "@/data/journal";
+import type { Adventure } from "@/types/adventure";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 
 type JournalAdventureCardProps = {
-    adventure: JournalAdventure;
+    adventure: Adventure;
 };
 
-const categoryLabels: Record<JournalAdventure["category"], string> = {hiking: "Hiking", sports: "Sports", travel: "Travel", food: "Food", outdoors: "Outdoors"}
+const categoryLabels: Record<Adventure["category"], string> = {hiking: "Hiking", sports: "Sports", travel: "Travel", food: "Food", outdoors: "Outdoors"}
 
-const categoryIcons: Record<JournalAdventure["category"], React.ComponentProps<typeof Ionicons>["name"]> = {
+const categoryIcons: Record<Adventure["category"], React.ComponentProps<typeof Ionicons>["name"]> = {
     hiking: "trail-sign-outline",
     sports: "trophy-outline",
     travel: "airplane-outline",
@@ -18,9 +19,20 @@ const categoryIcons: Record<JournalAdventure["category"], React.ComponentProps<t
     outdoors: "leaf-outline"
 };
 
+function formatAdventureDate(value: string): string {
+    const [year, month, day] = value.split("-").map(Number);
+
+    return new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric"
+    }).format(new Date(year, month-1, day));
+}
+
 export function JournalAdventureCard({adventure}: JournalAdventureCardProps) {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
+
+    const formattedDate = formatAdventureDate(adventure.adventure_date);
 
     return(
         <Pressable
@@ -30,13 +42,27 @@ export function JournalAdventureCard({adventure}: JournalAdventureCardProps) {
             ]}
         >
             <View style={styles.imageWrapper}>
-                <Image source={{uri: adventure.imageUrl}} style={styles.image} />
+                {/* <Image source={{uri: adventure.photos[0]?.image_url}} style={styles.image} /> */}
+                {adventure.photos[0]?.image_url ? (
+                    <Image 
+                        source={{uri: adventure.photos[0].image_url}}
+                        style={styles.image}
+                    />
+                ): (
+                    <View style={styles.imagePlaceholder}>
+                        <Ionicons name={categoryIcons[adventure.category]} size={38} color={colors.forest} />
+
+                        <Text style={styles.imagePlaceholderText}>
+                            {categoryLabels[adventure.category]}
+                        </Text>
+                    </View>
+                )}
 
                 <View style={styles.dateBadge}>
-                    <Text style={styles.dateText}>{adventure.date}</Text>
+                    <Text style={styles.dateText}>{formattedDate}</Text>
                 </View>
 
-                {adventure.isFavorite ? (
+                {adventure.is_favorite ? (
                     <View style={styles.favoriteBadge}>
                         <Ionicons name="heart" size={15} color="#FFFFFF" />
                     </View>
@@ -68,7 +94,7 @@ export function JournalAdventureCard({adventure}: JournalAdventureCardProps) {
                     <Ionicons name="location-outline" size={14} color={colors.textMuted} />
 
                     <Text numberOfLines={1} style={styles.location}>
-                        {adventure.location}
+                        {adventure.location_name}
                     </Text>
                 </View>
 
@@ -108,6 +134,19 @@ function createStyles(colors: AppColors) {
             width: "100%",
             height: 210,
             backgroundColor: colors.surfaceMuted
+        },
+        imagePlaceholder: {
+            width: "100%",
+            height: 210,
+            alignItems: "center",
+            justifyContent: "center",
+            gap: spacing.sm,
+            backgroundColor: colors.surfaceMuted
+        },
+        imagePlaceholderText: {
+            color: colors.textSecondary,
+            fontSize: 13,
+            fontWeight: "800"
         },
         dateBadge: {
             position: "absolute",

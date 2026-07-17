@@ -2,11 +2,21 @@ from datetime import date, datetime
 from decimal import Decimal
 from pydoc import classname
 from uuid import UUID
+from decimal import Decimal, ROUND_HALF_UP
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from app.models import adventure
 
 from app.models.enums import AdventureCategory, AdventureStatus
+
+
+COORDINATE_PRECISION = Decimal("0.000001")
+
+def normalize_coordinate(value: object) -> Decimal | None:
+    if value is None:
+        return None
+    
+    return Decimal(str(value)).quantize(COORDINATE_PRECISION, rounding=ROUND_HALF_UP)
 
 class AdventurePhotoCreate(BaseModel):
     image_url: str = Field(min_length=1, max_length=2048)
@@ -33,9 +43,9 @@ class AdventureBase(BaseModel):
 
     location_name: str = Field(min_length=2, max_length=120)
 
-    latitude: Decimal | None = Field(default=None, ge=Decimal("-90"), le=Decimal("90"), max_digits=9, decimal_places=6)
+    latitude: Decimal | None = Field(default=None, ge=Decimal("-90"), le=Decimal("90"))
 
-    longitude: Decimal | None = Field(default=None, ge=Decimal("-180"), le=Decimal("180"), max_digits=9, decimal_places=6)
+    longitude: Decimal | None = Field(default=None, ge=Decimal("-180"), le=Decimal("180"))
 
     rating: int = Field(default=5, ge=1, le=5)
 
@@ -45,6 +55,11 @@ class AdventureBase(BaseModel):
     @classmethod
     def strip_text(cls, value: str) -> str:
         return value.strip()
+
+    @field_validator("latitude", "longitude", mode="before")
+    @classmethod
+    def round_coordinate(cls, value: object) -> Decimal | None:
+        return normalize_coordinate(value)
     
     @model_validator(mode="after")
     def validate_coordinates(self) -> "AdventureBase":
@@ -94,6 +109,11 @@ class AdventureUpdate(BaseModel):
             return None
         
         return value.strip()
+    
+    @field_validator("latitude", "longitude", mode="before")
+    @classmethod
+    def round_coordinate(cls, value: object) -> Decimal | None:
+        return normalize_coordinate(value)
     
 class AdventureRead(AdventureBase):
     model_config = ConfigDict(from_attributes=True)
