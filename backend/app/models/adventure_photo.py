@@ -24,6 +24,8 @@ class AdventurePhoto(TimestampMixin, Base):
 
     image_url: Mapped[str] = mapped_column(String(2048), nullable=False)
 
+    public_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+
     position: Mapped[int] = mapped_column(nullable=False)
 
     adventure: Mapped["Adventure"] = relationship(back_populates="photos")

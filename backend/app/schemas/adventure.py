@@ -21,11 +21,14 @@ def normalize_coordinate(value: object) -> Decimal | None:
 class AdventurePhotoCreate(BaseModel):
     image_url: str = Field(min_length=1, max_length=2048)
 
+    public_id: str = Field(min_length=1, max_length=255)
+
 class AdventurePhotoRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     image_url: str
+    public_id: str
     position: int
     created_at: datetime
     updated_at: datetime

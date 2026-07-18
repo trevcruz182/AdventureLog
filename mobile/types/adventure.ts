@@ -5,6 +5,7 @@ export type AdventureStatus = "completed" | "wishlist";
 export type AdventurePhoto = {
     id: string;
     image_url: string;
+    public_id: string;
     position: number;
     created_at: string;
     updated_at: string;
@@ -36,6 +37,7 @@ export type Adventure = {
 
 export type AdventurePhotoCreate = {
     image_url: string;
+    public_id: string;
 };
 
 export type AdventureCreatePayload = {

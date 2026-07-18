@@ -28,6 +28,8 @@ import { AdventureReviewStep } from "@/components/create/AdventureReviewStep";
 import { AdventureStepIndicator } from "@/components/create/AdventureStepIndicator";
 import { CreateAdventureDefaultValues, CreateAdventureFormValues, createAdventureSchema } from "@/features/adventures/createAdventureSchema";
 import { AppColors, spacing, useAppTheme } from "@/theme";
+import { deleteUploadedImageRequest, uploadImageRequest } from "@/lib/api/media";
+import { UploadedImage } from "@/types/media";
 
 const TOTAL_STEPS = 4;
 
@@ -38,12 +40,22 @@ const stepFields: Record<number, Array<keyof CreateAdventureFormValues>> = {
     4: ["rating", "isFavorite"],
 };
 
+type UploadProgress = {
+    completed: number;
+    total: number;
+}
+
+async function cleanupUploadedImages(publidIds: string[]): Promise<void> {
+    await Promise.allSettled(publidIds.map((publicId) => deleteUploadedImageRequest(publicId)));
+}
+
 export default function CreateScreen() {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
     const [currentStep, setCurrentStep] = useState(1);
     const [isSaved, setIsSaved] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
 
     const {
         control,
@@ -78,6 +90,8 @@ export default function CreateScreen() {
 
     const createAdventureMutation = useCreateAdventure();
 
+    const isSaving = createAdventureMutation.isPending || uploadProgress !== null;
+
     async function goForward() {
         const fields = stepFields[currentStep];
 
@@ -104,48 +118,52 @@ export default function CreateScreen() {
     }
 
     async function submitAdventure(values: CreateAdventureFormValues) {
-        if(values.photos.length > 0) {
-            const shouldContinue = await new Promise<boolean>((resolve) => {
-                Alert.alert("Photo upload is not connected yet", "The adventure will be saved now, but its selected photos will not be included. Photo uploading is the next feature we'll connect.", [
-                    {
-                        text: "Go back",
-                        style: "cancel",
-                        onPress: () => resolve(false),
-                    },
-                    {
-                        text: "Save without photos",
-                        onPress: () => resolve(true)
-                    },
-                ], {
-                    cancelable: true,
-                    onDismiss: () => resolve(false)
-                })
-            });
+        const localPhotos = values.photos.map((photo) => typeof photo === "string" ? {
+            uri: photo,
+            fileName: null,
+            mimeType: null
+        } : photo);
 
-            if(!shouldContinue) {
-                return;
-            }
-        }
-
-        const payload: AdventureCreatePayload = {
-            title: values.title.trim(),
-            description: values.description.trim(),
-            category: values.category,
-            status: "completed",
-
-            adventure_date: values.date,
-            location_name: values.locationName.trim(),
-
-            latitude: roundCoordinate(values.latitude),
-            longitude: roundCoordinate(values.longitude),
-
-            rating: values.rating,
-            is_favorite: values.isFavorite,
-
-            photos: [] // Photo upload currently catches only device-local URIs for photos. Real photo storage will come later.
-        };
+        const uploadedImages: UploadedImage[] = [];
 
         try {
+            setUploadProgress({
+                completed: 0,
+                total: localPhotos.length
+            });
+
+            for(let index = 0; index < localPhotos.length; index += 1) {
+                const uploadedImage = await uploadImageRequest(localPhotos[index], index);
+
+                uploadedImages.push(uploadedImage);
+
+                setUploadProgress({
+                    completed: index + 1,
+                    total: localPhotos.length
+                });
+            }
+
+            const payload: AdventureCreatePayload = {
+                title: values.title.trim(),
+                description: values.description.trim(),
+                category: values.category,
+                status: "completed",
+    
+                adventure_date: values.date,
+                location_name: values.locationName.trim(),
+    
+                latitude: roundCoordinate(values.latitude),
+                longitude: roundCoordinate(values.longitude),
+    
+                rating: values.rating,
+                is_favorite: values.isFavorite,
+    
+                photos: uploadedImages.map((image) => ({
+                    image_url: image.image_url,
+                    public_id: image.public_id
+                }))
+            };
+
             await createAdventureMutation.mutateAsync(payload);
 
             setIsSaved(true);
@@ -158,6 +176,9 @@ export default function CreateScreen() {
             const message = error instanceof ApiError ? error.message : "AdventureLog could not save this adventure. Check your connection and try again.";
 
             Alert.alert("Adventure not saved", message);
+        }
+        finally {
+            setUploadProgress(null);
         }
     }
 
@@ -178,32 +199,6 @@ export default function CreateScreen() {
     if(isSaved) {
         return(
             <SafeAreaView style={styles.safeArea} edges={["top"]}>
-                {/* <View style={styles.successContainer}>
-                    <View style={styles.successIcon}>
-                        <Ionicons name="checkmark" size={36} color={colors.background} />
-                    </View>
-
-                    <Text style={styles.successEyebrow}>
-                        Memory saved
-                    </Text>
-
-                    <Text style={styles.successTitle}>
-                        Another mark on the map.
-                    </Text>
-
-                    <Text style={styles.successDescription}>
-                        Your adventure is ready to join the journal once the backend connection is added.
-                    </Text>
-
-                    <Pressable onPress={startAnotherAdventure} style={({pressed}) => [styles.primaryButton, styles.successButton, pressed && styles.pressed]}>
-                        <Ionicons name="add" size={20} color={colors.background} />
-
-                        <Text style={styles.primaryButtonText}>
-                            Log another adventure
-                        </Text>
-                    </Pressable>
-                </View> */}
-
                 <View style={styles.sucessActions}>
                     <Pressable
                         onPress={() => {
@@ -339,23 +334,42 @@ export default function CreateScreen() {
                             <Ionicons name="arrow-forward" size={18} color={colors.background} />
                         </Pressable>
                     ): (
-                        <Pressable
-                            disabled={createAdventureMutation.isPending}
-                            onPress={handleSubmit(submitAdventure)}
-                            style={({pressed}) => [styles.primaryButton, pressed && styles.pressed, createAdventureMutation.isPending && styles.buttonDisabled]}
-                        >
-                            {createAdventureMutation.isPending ? (
-                                <ActivityIndicator size="small" color={colors.background} />
-                            ): (
-                            <>
-                                <Ionicons name="bookmark-outline" size={18} color={colors.background} />
+                        <View style={styles.finalStepActions}>
+                            {uploadProgress && uploadProgress.total > 0 ? (
+                                <View style={styles.uploadProgressCard}>
+                                    <ActivityIndicator size="small" color={colors.forest} />
 
-                                <Text style={styles.primaryButtonText}>
-                                    Save adventure
-                                </Text>
-                            </>
-                            )}
-                        </Pressable>
+                                    <View style={styles.uploadProgressText}>
+                                        <Text style={styles.uploadProgressTitle}>
+                                            Uploading photos
+                                        </Text>
+
+                                        <Text style={styles.uploadProgressDescription}>
+                                            {uploadProgress.completed} of{" "}
+                                            {uploadProgress.total} complete
+                                        </Text>
+                                    </View>
+                                </View>
+                            ): null}
+
+                            <Pressable
+                                disabled={isSaving}
+                                onPress={handleSubmit(submitAdventure)}
+                                style={({pressed}) => [styles.primaryButton, pressed && !isSaving && styles.pressed, isSaving && styles.buttonDisabled]}
+                            >
+                                {isSaving ? (
+                                    <ActivityIndicator size="small" color={colors.background} />
+                                ): (
+                                <>
+                                    <Ionicons name="bookmark-outline" size={18} color={colors.background} />
+
+                                    <Text style={styles.primaryButtonText}>
+                                        Save adventure
+                                    </Text>
+                                </>
+                                )}
+                            </Pressable>
+                        </View>
                     )}
                 </View>
             </KeyboardAvoidingView>
@@ -523,6 +537,34 @@ function createStyles(colors: AppColors) {
         },
         buttonDisabled: {
             opacity: 0.65
+        },
+        uploadProgressCard: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.md,
+            marginBottom: spacing.md,
+            padding: spacing.md,
+            backgroundColor: colors.surfaceMuted,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 16
+        },
+        uploadProgressText: {
+            flex: 1
+        },
+        uploadProgressTitle: {
+            color: colors.textPrimary,
+            fontSize: 13,
+            fontWeight: "800"
+        },
+        uploadProgressDescription: {
+            marginTop: 3,
+            color: colors.textSecondary,
+            fontSize: 12,
+        },
+        finalStepActions: {
+            flex: 1,
+            // gap: spacing.md
         }
     });
 }
