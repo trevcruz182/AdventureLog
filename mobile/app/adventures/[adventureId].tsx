@@ -1,12 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, useWindowDimensions, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, NativeScrollEvent, NativeSyntheticEvent, useWindowDimensions, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAdventure, useDeleteAdventure, useToggleAdventureFavorite } from "@/features/adventures/useAdventures";
 import { ApiError } from "@/lib/api/ApiError";
 import type { Adventure, AdventureCategory } from "@/types/adventure";
 import { AppColors, spacing, useAppTheme } from "@/theme";
+import { useState } from "react";
 
 const categoryLabels: Record<AdventureCategory, string> = {
     hiking: "Hiking",
@@ -50,6 +51,8 @@ export default function AdventureDetailScreen() {
     const styles = createStyles(colors);
     
     const {width: screenWidth} = useWindowDimensions();
+
+    const [activePhotoIndex, setActivePhotoIndex] = useState(0);
 
     const params = useLocalSearchParams<{adventureId?: string | string[]}>();
 
@@ -107,6 +110,12 @@ export default function AdventureDetailScreen() {
 
             Alert.alert("Favorite not updated", message);
         }
+    }
+
+    function handlePhotoScrollEnd(event: NativeSyntheticEvent<NativeScrollEvent>) {
+        const nextIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
+
+        setActivePhotoIndex(nextIndex);
     }
 
     if(isLoading) {
@@ -227,22 +236,34 @@ export default function AdventureDetailScreen() {
                 contentContainerStyle={styles.content}
             >
                 {adventure.photos.length > 0 ? (
-                    <ScrollView
-                        horizontal
-                        pagingEnabled
-                        showsHorizontalScrollIndicator={false}
-                        bounces={false}
-                        style={styles.photoScroller}
-                    >
-                        {adventure.photos.map((photo) => (
-                            <Image 
-                                key={photo.id} 
-                                source={{uri: photo.image_url}} 
-                                resizeMode="cover"
-                                style={[styles.photo, {width: screenWidth}]} 
-                            />
-                        ))}
-                    </ScrollView>
+                    <View style={styles.photoCarousel}>
+                        <ScrollView
+                            horizontal
+                            pagingEnabled
+                            showsHorizontalScrollIndicator={false}
+                            onMomentumScrollEnd={handlePhotoScrollEnd}
+                            bounces={false}
+                            style={styles.photoScroller}
+                        >
+                            {adventure.photos.map((photo) => (
+                                <Image 
+                                    key={photo.id} 
+                                    source={{uri: photo.image_url}} 
+                                    resizeMode="cover"
+                                    style={[styles.photo, {width: screenWidth}]} 
+                                />
+                            ))}
+                        </ScrollView>
+
+                        {adventure.photos.length > 1 ? (
+                            <View style={styles.photoIndicator}>
+                                <Text style={styles.photoIndicatorText}>
+                                    {activePhotoIndex + 1} /{" "}
+                                    {adventure.photos.length}
+                                </Text>
+                            </View>
+                        ): null}
+                    </View>
                 ): (
                     <View style={styles.photoPlaceholder}>
                         <Ionicons name={categoryIcons[adventure.category]} size={46} color={colors.forest} />
@@ -375,6 +396,23 @@ function createStyles(colors: AppColors) {
             justifyContent: "center",
             gap: spacing.sm,
             backgroundColor: colors.surfaceMuted
+        },
+        photoCarousel: {
+            position: "relative"
+        },
+        photoIndicator: {
+            position: "absolute",
+            right: spacing.lg,
+            bottom: spacing.lg,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm,
+            backgroundColor: "rgba(0, 0, 0, 0.62)",
+            borderRadius: 999
+        },
+        photoIndicatorText: {
+            color: "#FFFFFF",
+            fontSize: 12,
+            fontWeight: "800"
         },
         placeholderLabel: {
             color: colors.textSecondary,
