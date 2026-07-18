@@ -3,23 +3,43 @@ import { LinearGradient } from "expo-linear-gradient";
 import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { spacing } from "@/theme";
+import type { Adventure } from "@/types/adventure";
 
 type FeaturedAdventureCardProps = {
-    title: string;
-    location: string;
-    date: string;
-    category: string;
-    imageUrl: string;
+    adventure: Adventure;
+    onPress: () => void;
 };
 
-export function FeaturedAdventureCard({title, location, date, category, imageUrl}: FeaturedAdventureCardProps) {
+const categoryLabels: Record<Adventure["category"], string> = {
+    hiking: "Hiking",
+    sports: "Sports",
+    travel: "Travel",
+    food: "Food",
+    outdoors: "Outdoors"
+};
+
+function formatAdventureDate(value: string): string {
+    const [year, month, day] = value.split("-").map(Number);
+
+    return new Intl.DateTimeFormat("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+    }).format(new Date(year, month-1, day));
+}
+
+export function FeaturedAdventureCard({adventure, onPress}: FeaturedAdventureCardProps) {
+    const coverImage = adventure.photos[0]?.image_url;
+    
     return(
         <Pressable
             accessibilityRole="button"
+            accessibilityLabel={`Open ${adventure.title}`}
+            onPress={onPress}
             style={({pressed}) => [styles.card, pressed && styles.cardPressed]}
         >
             <ImageBackground
-                source={{uri: imageUrl}}
+                source={{uri: coverImage}}
                 style={styles.image}
                 imageStyle={styles.imageRadius}
             >
@@ -30,24 +50,24 @@ export function FeaturedAdventureCard({title, location, date, category, imageUrl
                     <View style={styles.topRow}>
                         <View style={styles.categoryBadge}>
                             <Ionicons name="trail-sign-outline" size={14} color="#FFFFFF" />
-                            <Text style={styles.categoryText}>{category}</Text>
+                            <Text style={styles.categoryText}>{categoryLabels[adventure.category]}</Text>
                         </View>
 
                         <View style={styles.favoriteButton}>
-                            <Ionicons name="heart-outline" size={20} color="#FFFFFF" />
+                            <Ionicons name={adventure.is_favorite ? "heart" : "heart-outline"} size={20} color="#FFFFFF" />
                         </View>
                     </View>
 
                     <View>
                         <Text style={styles.eyebrow}>Latest Adventure</Text>
-                        <Text style={styles.title}>{title}</Text>
+                        <Text style={styles.title}>{adventure.title}</Text>
 
                         <View style={styles.metadataRow}>
                             <Ionicons name="location-outline" size={15} color="rgba(255, 255, 255, 0.85)" />
-                            <Text style={styles.metadata}>{location}</Text>
+                            <Text style={styles.metadata}>{adventure.location_name}</Text>
                         </View>
 
-                        <Text style={styles.date}>{date}</Text>
+                        <Text style={styles.date}>{formatAdventureDate(adventure.adventure_date)}</Text>
                     </View>
                 </LinearGradient>
             </ImageBackground>
@@ -63,7 +83,7 @@ const styles = StyleSheet.create({
     },
     cardPressed: {
         opacity: 0.94,
-        transform: [{scale: 0.0995}]
+        transform: [{scale: 0.995}]
     },
     image: {
         flex: 1,
