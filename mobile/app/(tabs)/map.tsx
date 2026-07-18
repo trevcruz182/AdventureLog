@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
+import { router } from "expo-router";
 
 import { 
     ActivityIndicator,
@@ -16,17 +17,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AdventureMapMarker } from "@/components/map/AdventureMapMarker";
 import { MapAdventurePreview } from "@/components/map/MapAdventurePreview";
-import { AdventureCategory } from "@/data/home";
-import { MapAdventure, mapAdventures } from "@/data/map";
+import { useAdventures } from "@/features/adventures/useAdventures";
+import { getMappedAdventures, MappedAdventure } from "@/features/adventures/adventureCoordinates";
+import { ApiError } from "@/lib/api/ApiError";
 import { AppColors, spacing, useAppTheme } from "@/theme";
+import type { AdventureCategory } from "@/types/adventure";
 
 type MapFilter = "all" | AdventureCategory;
 
-const initialRegion: Region = {
+const DEFAULT_REGION: Region = {
     latitude: 41.37,
     longitude: -73.86,
-    latitudeDelta: 0.38,
-    longitudeDelta: 0.38
+    latitudeDelta: 0.75,
+    longitudeDelta: 0.75
 };
 
 const mapFilters: Array<{
@@ -70,9 +73,50 @@ export default function MapScreen() {
     const {colors, isDark} = useAppTheme();
     const styles = createStyles(colors);
 
-    const mapRef = useRef<MapView>(null);
+    const {
+        data,
+        isLoading,
+        isError,
+        error,
+        refetch,
+        isRefetching,
+    } = useAdventures({limit: 100});
 
-    const [selectedAdventure, setSelectedAdventure] = useState<MapAdventure | null>(null);
+    const mappedAdventures = useMemo(() => getMappedAdventures(data?.items ?? []), [data]);
+
+    const mapRef = useRef<MapView | null>(null);
+
+    const hasFitMarkersRef = useRef(false);
+
+    useEffect(() => {
+        if(hasFitMarkersRef.current || mappedAdventures.length === 0) {
+            return;
+        }
+
+        const timeout = setTimeout(() => {
+            mapRef.current?.fitToCoordinates(mappedAdventures.map((adventure) => ({
+                latitude: adventure.latitudeNumber,
+                longitude: adventure.longitudeNumber
+            })
+            ), {
+                edgePadding: {
+                    top: 120,
+                    right: 60,
+                    bottom: 220,
+                    left: 60
+                },
+                animated: true,
+            });
+
+            hasFitMarkersRef.current = true;
+        }, 300);
+
+        return () => clearTimeout(timeout);
+    }, [mappedAdventures]);
+
+    const [selectedAdventureId, setSelectedAdventureId] = useState<string | null>(null);
+
+    const selectedAdventure = mappedAdventures.find((adventure) => adventure.id === selectedAdventureId) ?? null;
 
     const [selectedFilter, setSelectedFilter] = useState<MapFilter>("all");
 
@@ -80,14 +124,26 @@ export default function MapScreen() {
 
     const [isLocating, setIsLocating] = useState(false);
 
-    const visibleAdventures = mapAdventures.filter((adventure) => selectedFilter === "all" || adventure.category === selectedFilter);
+    const visibleAdventures = useMemo(() => mappedAdventures.filter((adventure) => selectedFilter === "all" || adventure.category === selectedFilter), [mappedAdventures, selectedFilter]);
 
-    function handleSelectAdventure(adventure: MapAdventure) {
-        setSelectedAdventure(adventure);
+    useEffect(() => {
+        if(!selectedAdventureId) {
+            return;
+        }
+
+        const isStillVisible = visibleAdventures.some((adventure) => adventure.id === selectedAdventureId);
+
+        if(!isStillVisible) {
+            setSelectedAdventureId(null);
+        }
+    }, [selectedAdventureId, visibleAdventures]);
+
+    function handleSelectAdventure(adventure: MappedAdventure) {
+        setSelectedAdventureId(adventure.id);
 
         mapRef.current?.animateToRegion({
-            latitude: adventure.latitude - 0.015,
-            longitude: adventure.longitude,
+            latitude: adventure.latitudeNumber - 0.015,
+            longitude: adventure.longitudeNumber,
             latitudeDelta: 0.12,
             longitudeDelta: 0.12,
         }, 400);
@@ -131,19 +187,18 @@ export default function MapScreen() {
                 <MapView
                     ref={mapRef}
                     style={StyleSheet.absoluteFill}
-                    initialRegion={initialRegion}
+                    initialRegion={DEFAULT_REGION}
                     mapType={mapType}
                     showsCompass={false}
                     showsUserLocation
                     showsMyLocationButton={false}
                     userInterfaceStyle={isDark ? "dark" : "light"}
-                    onPress={() => setSelectedAdventure(null)}
                 >
                     {visibleAdventures.map((adventure) => (
                         <AdventureMapMarker 
                             key={adventure.id}
                             adventure={adventure}
-                            isSelected={selectedAdventure?.id === adventure.id}
+                            isSelected={selectedAdventureId === adventure.id}
                             onPress={() => handleSelectAdventure(adventure)}
                         />
                     ))}
@@ -185,7 +240,7 @@ export default function MapScreen() {
                                     key={filter.value}
                                     onPress={() => {
                                         setSelectedFilter(filter.value);
-                                        setSelectedAdventure(null);
+                                        setSelectedAdventureId(null);
                                     }}
                                     style={({pressed}) => [styles.filterChip, isSelected && styles.filterChipSelected, pressed && styles.pressed]}
                                 >
@@ -199,6 +254,71 @@ export default function MapScreen() {
                         })}
                     </ScrollView>
                 </View>
+
+                {isLoading ? (
+                    <View style={styles.mapStatusCard}>
+                        <ActivityIndicator size="small" color={colors.forest} />
+                        <Text style={styles.mapStatusText}>Loading your map…</Text>
+                    </View>
+                ) : null}
+
+                {isError ? (
+                    <View style={styles.mapErrorCard}>
+                        <Ionicons name="cloud-offline-outline" size={20} color={colors.danger} />
+
+                        <View style={styles.mapErrorContent}>
+                            <Text style={styles.mapErrorTitle}>Adventures unavailable</Text>
+                            <Text style={styles.mapErrorDescription}>
+                                {error instanceof ApiError
+                                    ? error.message
+                                    : "AdventureLog could not load your saved locations."}
+                            </Text>
+                        </View>
+
+                        <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="Retry loading adventures"
+                            disabled={isRefetching}
+                            onPress={() => void refetch()}
+                            style={styles.mapRetryButton}
+                        >
+                            {isRefetching ? (
+                                <ActivityIndicator size="small" color={colors.forest} />
+                            ) : (
+                                <Ionicons name="refresh" size={19} color={colors.forest} />
+                            )}
+                        </Pressable>
+                    </View>
+                ) : null}
+
+                {!isLoading && !isError && data?.items.length === 0 ? (
+                    <Pressable
+                        accessibilityRole="button"
+                        onPress={() => router.navigate("/(tabs)/create")}
+                        style={styles.noLocationsCard}
+                    >
+                        <Ionicons name="map-outline" size={24} color={colors.clay} />
+                        <View style={styles.noLocationsContent}>
+                            <Text style={styles.noLocationsTitle}>Your map is waiting</Text>
+                            <Text style={styles.noLocationsDescription}>
+                                Log your first adventure to place a memory on the map.
+                            </Text>
+                        </View>
+                        <Ionicons name="arrow-forward" size={20} color={colors.forest} />
+                    </Pressable>
+                ) : null}
+
+                {!isLoading && !isError && data && data.items.length > 0 && mappedAdventures.length === 0 ? (
+                    <View style={styles.noLocationsCard}>
+                        <Ionicons name="location-outline" size={24} color={colors.clay} />
+                        <View style={styles.noLocationsContent}>
+                            <Text style={styles.noLocationsTitle}>No mapped adventures yet</Text>
+                            <Text style={styles.noLocationsDescription}>
+                                Adventures need coordinates before they can appear on your map.
+                            </Text>
+                        </View>
+                    </View>
+                ) : null}
 
                 <View
                     style={[styles.mapControls, selectedAdventure && styles.mapControlsWithPreview]}
@@ -228,7 +348,18 @@ export default function MapScreen() {
                 </View>
 
                 {selectedAdventure ? (
-                    <MapAdventurePreview adventure={selectedAdventure} onClose={() => setSelectedAdventure(null)} />
+                    <View pointerEvents="box-none" style={styles.previewOverlay}>
+                        <MapAdventurePreview 
+                            adventure={selectedAdventure} 
+                            onClose={() => setSelectedAdventureId(null)} 
+                            onPress={() => router.push({
+                                pathname: "/adventures/[adventureId]",
+                                params: {
+                                    adventureId: selectedAdventure.id
+                                }
+                            })}
+                        />
+                    </View>
                 ): null}
             </View>
         </SafeAreaView>
@@ -350,6 +481,14 @@ function createStyles(colors: AppColors) {
         mapControlsWithPreview: {
             bottom: 235,
         },
+        previewOverlay: {
+            position: "absolute",
+            right: spacing.lg,
+            bottom: spacing.lg,
+            left: spacing.lg,
+            zIndex: 20,
+            elevation: 20,
+        },
         countBadge: {
             flexDirection: "row",
             alignItems: "center",
@@ -373,6 +512,89 @@ function createStyles(colors: AppColors) {
             color: colors.textPrimary,
             fontSize: 13,
             fontWeight: "800",
+        },
+        mapStatusCard: {
+            position: "absolute",
+            top: 166,
+            alignSelf: "center",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.sm,
+            paddingHorizontal: spacing.lg,
+            paddingVertical: spacing.md,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 999,
+        },
+        mapStatusText: {
+            color: colors.textPrimary,
+            fontSize: 12,
+            fontWeight: "800",
+        },
+        mapErrorCard: {
+            position: "absolute",
+            top: 166,
+            right: spacing.lg,
+            left: spacing.lg,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.md,
+            padding: spacing.md,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.danger,
+            borderRadius: 18,
+        },
+        mapErrorContent: {
+            flex: 1,
+        },
+        mapErrorTitle: {
+            color: colors.textPrimary,
+            fontSize: 13,
+            fontWeight: "800",
+        },
+        mapErrorDescription: {
+            marginTop: 3,
+            color: colors.textSecondary,
+            fontSize: 11,
+            lineHeight: 16,
+        },
+        mapRetryButton: {
+            width: 40,
+            height: 40,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: colors.surfaceMuted,
+            borderRadius: 20,
+        },
+        noLocationsCard: {
+            position: "absolute",
+            right: spacing.lg,
+            bottom: 76,
+            left: spacing.lg,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.md,
+            padding: spacing.lg,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 20,
+        },
+        noLocationsContent: {
+            flex: 1,
+        },
+        noLocationsTitle: {
+            color: colors.textPrimary,
+            fontSize: 14,
+            fontWeight: "800",
+        },
+        noLocationsDescription: {
+            marginTop: 4,
+            color: colors.textSecondary,
+            fontSize: 12,
+            lineHeight: 17,
         },
         pressed: {
             opacity: 0.82,

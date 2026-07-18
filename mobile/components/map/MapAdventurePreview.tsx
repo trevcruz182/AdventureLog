@@ -1,15 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { MapAdventure } from "@/data/map";
+import type { Adventure } from "@/types/adventure";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 
 type MapAdventurePreviewProps = {
-    adventure: MapAdventure;
+    adventure: Adventure;
     onClose: () => void;
+    onPress: () => void;
 };
 
-const categoryLabels: Record<MapAdventure["category"], string> = {
+const categoryLabels: Record<Adventure["category"], string> = {
     hiking: "Hiking",
     sports: "Sports",
     travel: "Travel",
@@ -17,16 +18,28 @@ const categoryLabels: Record<MapAdventure["category"], string> = {
     outdoors: "Outdoors"
 };
 
-export function MapAdventurePreview({adventure, onClose}: MapAdventurePreviewProps) {
+export function MapAdventurePreview({adventure, onClose, onPress}: MapAdventurePreviewProps) {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
     return(
-        <View style={styles.card}>
+        <Pressable 
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${adventure.title}`}
+            onPress={onPress}
+            style={({pressed}) => [styles.card, pressed && styles.pressed]}
+        >
             <View style={styles.handle} />
 
             <View style={styles.cardContent}>
-                <Image source={{uri: adventure.imageUrl}} style={styles.image} />
+                {adventure.photos[0]?.image_url ? (
+                    <Image source={{uri: adventure.photos[0].image_url}} style={styles.image} />
+                ): (
+                    <View style={styles.imagePlaceholder}>
+                        <Ionicons name="image-outline" size={28} color={colors.forest} />
+                    </View>
+                )}
+                
 
                 <View style={styles.details}>
                     <View style={styles.topRow}>
@@ -37,14 +50,17 @@ export function MapAdventurePreview({adventure, onClose}: MapAdventurePreviewPro
                         <Pressable
                             accessibilityRole="button"
                             accessibilityLabel="Close adventure preview"
-                            onPress={onClose}
+                            onPress={(event) => {
+                                event.stopPropagation();
+                                onClose();
+                            }}
                             hitSlop={10}
                         >
                             <Ionicons name="close" size={20} color={colors.textMuted} />
                         </Pressable>
                     </View>
 
-                    <Text style={styles.card} numberOfLines={2}>
+                    <Text style={styles.title} numberOfLines={2}>
                         {adventure.title}
                     </Text>
 
@@ -52,17 +68,22 @@ export function MapAdventurePreview({adventure, onClose}: MapAdventurePreviewPro
                         <Ionicons name="location-outline" size={14} color={colors.textMuted} />
 
                         <Text numberOfLines={1} style={styles.location}>
-                            {adventure.location}
+                            {adventure.location_name}
                         </Text>
                     </View>
 
-                    <Text style={styles.date}>{adventure.date}</Text>
+                    <Text style={styles.date}>{adventure.adventure_date}</Text>
                 </View>
             </View>
 
             <Pressable
                 style={({pressed}) => [styles.openButton, pressed && styles.pressed]}
                 accessibilityRole="button"
+                accessibilityLabel={`Open ${adventure.title}`}
+                onPress={(event) => {
+                    event.stopPropagation();
+                    onPress();
+                }}
             >
                 <Text style={styles.openButtonText}>
                     Open memory
@@ -70,17 +91,18 @@ export function MapAdventurePreview({adventure, onClose}: MapAdventurePreviewPro
 
                 <Ionicons name="arrow-forward" size={17} color={colors.background} />
             </Pressable>
-        </View>
+        </Pressable>
     );
 }
 
 function createStyles(colors: AppColors) {
     return StyleSheet.create({
         card: {
-            position: "absolute",
-            right: spacing.lg,
-            bottom: spacing.lg,
-            left: spacing.lg,
+            // position: "absolute",
+            // right: spacing.lg,
+            // bottom: spacing.lg,
+            // left: spacing.lg,
+            // zIndex: 10,
             padding: spacing.md,
             backgroundColor: colors.surface,
             borderWidth: 1,
@@ -112,6 +134,14 @@ function createStyles(colors: AppColors) {
             height: 112,
             backgroundColor: colors.surfaceMuted,
             borderRadius: 18,
+        },
+        imagePlaceholder: {
+            width: 104,
+            height: 112,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: colors.surfaceMuted,
+            borderRadius: 18
         },
         details: {
             flex: 1,

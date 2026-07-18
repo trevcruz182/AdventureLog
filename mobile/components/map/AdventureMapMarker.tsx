@@ -2,16 +2,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, View } from "react-native";
 import { Marker } from "react-native-maps";
 
-import { MapAdventure } from "@/data/map";
+import type { MappedAdventure } from "@/features/adventures/adventureCoordinates";
 import { AppColors, useAppTheme } from "@/theme";
 
 type AdventureMapMarkerProps = {
-    adventure: MapAdventure;
+    adventure: MappedAdventure;
     isSelected: boolean;
     onPress: () => void;
 };
 
-const categoryIcons: Record<MapAdventure["category"], React.ComponentProps<typeof Ionicons>["name"]> = {
+const categoryIcons: Record<MappedAdventure["category"], React.ComponentProps<typeof Ionicons>["name"]> = {
     hiking: "trail-sign",
     sports: "trophy",
     travel: "airplane",
@@ -26,11 +26,11 @@ export function AdventureMapMarker({adventure, isSelected, onPress}: AdventureMa
     return(
         <Marker
             coordinate={{
-                latitude: adventure.latitude,
-                longitude: adventure.longitude
+                latitude: adventure.latitudeNumber,
+                longitude: adventure.longitudeNumber
             }}
             title={adventure.title}
-            description={adventure.location}
+            description={adventure.location_name}
             onPress={onPress}
             tracksViewChanges={isSelected}
         >
