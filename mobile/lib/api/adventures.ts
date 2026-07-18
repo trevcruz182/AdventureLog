@@ -44,3 +44,20 @@ export function createAdventureRequest(payload: AdventureCreatePayload): Promise
 export function getAdventureRequest(adventureId: string): Promise<Adventure> {
     return apiRequest<Adventure>(`/adventures/${adventureId}`);
 }
+
+export type AdventureUpdatePayload = {
+    is_favorite?: boolean;
+};
+
+export function updateAdventureRequest(adventureId: string, payload: AdventureUpdatePayload): Promise<Adventure> {
+    return apiRequest<Adventure>(`/adventures/${adventureId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload)
+    });
+}
+
+export function deleteAdventureRequest(adventureId: string): Promise<void> {
+    return apiRequest<void>(`/adventures/${adventureId}`, {
+        method: "DELETE"
+    });
+}

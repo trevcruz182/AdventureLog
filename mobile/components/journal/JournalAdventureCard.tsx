@@ -7,6 +7,7 @@ import { AppColors, spacing, useAppTheme } from "@/theme";
 
 type JournalAdventureCardProps = {
     adventure: Adventure;
+    onPress: () => void;
 };
 
 const categoryLabels: Record<Adventure["category"], string> = {hiking: "Hiking", sports: "Sports", travel: "Travel", food: "Food", outdoors: "Outdoors"}
@@ -28,7 +29,7 @@ function formatAdventureDate(value: string): string {
     }).format(new Date(year, month-1, day));
 }
 
-export function JournalAdventureCard({adventure}: JournalAdventureCardProps) {
+export function JournalAdventureCard({adventure, onPress}: JournalAdventureCardProps) {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
@@ -37,6 +38,8 @@ export function JournalAdventureCard({adventure}: JournalAdventureCardProps) {
     return(
         <Pressable
             accessibilityRole="button"
+            accessibilityLabel={`Open ${adventure.title}`}
+            onPress={onPress}
             style={({pressed}) => [
                 styles.card, pressed && styles.cardPressed
             ]}
@@ -124,8 +127,8 @@ function createStyles(colors: AppColors) {
             borderRadius: 26,
         },
         cardPressed: {
-            opacity: 0.93,
-            transform: [{scale: 0.997}]
+            opacity: 0.88,
+            transform: [{scale: 0.99}]
         },
         imageWrapper: {
             position: "relative"

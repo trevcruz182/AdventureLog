@@ -35,6 +35,14 @@ function RootNavigator() {
 
         <Stack.Protected guard={isAuthenticated}>
           <Stack.Screen name="(tabs)" />
+
+          <Stack.Screen 
+            name="adventures/[adventureId]"
+            options={{
+              presentation: "card",
+              animation: "slide_from_right"
+            }}
+          />
         </Stack.Protected>
       </Stack>
     </>

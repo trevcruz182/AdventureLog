@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { createAdventureRequest, listAdventuresRequest } from "@/lib/api/adventures";
+import { createAdventureRequest, listAdventuresRequest, deleteAdventureRequest, getAdventureRequest, updateAdventureRequest } from "@/lib/api/adventures";
 import { adventureQueryKeys } from "./adventureQueries";
 
-import type { AdventureCreatePayload, AdventureListParams } from "@/types/adventure";
+import type { AdventureCreatePayload, AdventureListParams, Adventure } from "@/types/adventure";
 
 export function useAdventures(params: AdventureListParams = {}) {
     return useQuery({
@@ -20,6 +20,40 @@ export function useCreateAdventure() {
 
         onSuccess: async () => {
             await queryClient.invalidateQueries({queryKey: adventureQueryKeys.lists()})
+        }
+    });
+}
+
+export function useAdventure(adventureId: string | undefined) {
+    return useQuery<Adventure>({
+        queryKey: adventureQueryKeys.detail(adventureId ?? ""),
+        queryFn: () => getAdventureRequest(adventureId as string),
+        enabled: Boolean(adventureId)
+    });
+}
+
+export function useToggleAdventureFavorite() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({adventureId, isFavorite}: {adventureId: string; isFavorite: boolean}) => updateAdventureRequest(adventureId, {is_favorite: isFavorite}),
+        onSuccess: async (updatedAdventure) => {
+            queryClient.setQueryData(adventureQueryKeys.detail(updatedAdventure.id), updatedAdventure);
+
+            await queryClient.invalidateQueries({queryKey: adventureQueryKeys.lists()});
+        }
+    });
+}
+
+export function useDeleteAdventure() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (adventureId: string) => deleteAdventureRequest(adventureId),
+        onSuccess: async (_, adventureId) => {
+            queryClient.removeQueries({queryKey: adventureQueryKeys.detail(adventureId)});
+
+            await queryClient.invalidateQueries({queryKey: adventureQueryKeys.lists()});
         }
     });
 }

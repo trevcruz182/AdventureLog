@@ -308,9 +308,15 @@ export default function JournalScreen() {
                     </View>
                 )}
                 renderItem={({item}) => (
-                    <View style={styles.cardWrapper}>
-                        <JournalAdventureCard adventure={item} />
-                    </View>
+                    <JournalAdventureCard 
+                        adventure={item}
+                        onPress={() => router.push({
+                            pathname: "/adventures/[adventureId]",
+                            params: {
+                                adventureId: item.id,
+                            }
+                        })}
+                    />
                 )}
                 ListEmptyComponent={
                     <View style={styles.emptyState}>
