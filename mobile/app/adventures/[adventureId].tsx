@@ -196,6 +196,21 @@ export default function AdventureDetailScreen() {
                 <View style={styles.headerActions}>
                     <Pressable
                         accessibilityRole="button"
+                        accessibilityLabel="Edit adventure"
+                        disabled={isUpdating}
+                        onPress={() => router.push({
+                            pathname: "/adventures/edit",
+                            params: {
+                                adventureId: adventure.id
+                            }
+                        })}
+                        style={({pressed}) => [styles.headerButton, pressed && styles.pressed, isUpdating && styles.disabled]}
+                    >
+                        <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />
+                    </Pressable>
+
+                    <Pressable
+                        accessibilityRole="button"
                         accessibilityLabel={adventure.is_favorite ? "Remove from favorites" : "Add to favorites"}
                         disabled={isUpdating}
                         onPress={() => void toggleFavorite(adventure)}

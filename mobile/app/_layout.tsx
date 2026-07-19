@@ -43,6 +43,14 @@ function RootNavigator() {
               animation: "slide_from_right"
             }}
           />
+
+          <Stack.Screen 
+            name="adventures/edit"
+            options={{
+              presentation: "card",
+              animation: "slide_from_right"
+            }}
+          />
         </Stack.Protected>
       </Stack>
     </>

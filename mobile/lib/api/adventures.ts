@@ -45,9 +45,7 @@ export function getAdventureRequest(adventureId: string): Promise<Adventure> {
     return apiRequest<Adventure>(`/adventures/${adventureId}`);
 }
 
-export type AdventureUpdatePayload = {
-    is_favorite?: boolean;
-};
+export type AdventureUpdatePayload = Partial<AdventureCreatePayload>;
 
 export function updateAdventureRequest(adventureId: string, payload: AdventureUpdatePayload): Promise<Adventure> {
     return apiRequest<Adventure>(`/adventures/${adventureId}`, {

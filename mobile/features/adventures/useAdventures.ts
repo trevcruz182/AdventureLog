@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { createAdventureRequest, listAdventuresRequest, deleteAdventureRequest, getAdventureRequest, updateAdventureRequest } from "@/lib/api/adventures";
 import { adventureQueryKeys } from "./adventureQueries";
+import type { AdventureUpdatePayload } from "@/lib/api/adventures";
 
 import type { AdventureCreatePayload, AdventureListParams, Adventure } from "@/types/adventure";
 
@@ -29,6 +30,26 @@ export function useAdventure(adventureId: string | undefined) {
         queryKey: adventureQueryKeys.detail(adventureId ?? ""),
         queryFn: () => getAdventureRequest(adventureId as string),
         enabled: Boolean(adventureId)
+    });
+}
+
+export function useUpdateAdventure() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            adventureId,
+            payload,
+        }: {
+            adventureId: string;
+            payload: AdventureUpdatePayload;
+        }) => updateAdventureRequest(adventureId, payload),
+
+        onSuccess: async (updatedAdventure) => {
+            queryClient.setQueryData(adventureQueryKeys.detail(updatedAdventure.id), updatedAdventure);
+
+            await queryClient.invalidateQueries({queryKey: adventureQueryKeys.lists()})
+        }
     });
 }
 
