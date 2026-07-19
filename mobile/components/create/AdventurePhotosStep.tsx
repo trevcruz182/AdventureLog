@@ -64,7 +64,7 @@ export function AdventurePhotosStep({photos, onChangePhotos}: AdventurePhotosSte
         const permission = await ImagePicker.requestCameraPermissionsAsync();
 
         if(!permission.granted) {
-            Alert.alert("Camera permission needed", "AdventureLog needs camera acess to take a photo.");
+            Alert.alert("Camera permission needed", "AdventureLog needs camera access to take a photo.");
             return;
         }
 
@@ -108,7 +108,7 @@ export function AdventurePhotosStep({photos, onChangePhotos}: AdventurePhotosSte
                     </Text>
 
                     <Text style={styles.actionDescription}>
-                        Choose exisiting memories
+                        Choose existing memories
                     </Text>
                 </Pressable>
 

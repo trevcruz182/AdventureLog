@@ -12,12 +12,15 @@ import { AdventureBasicsStep } from "@/components/create/AdventureBasicsStep";
 import { AdventurePlaceStep } from "@/components/create/AdventurePlaceStep";
 import { AdventureReviewStep } from "@/components/create/AdventureReviewStep";
 import { AdventureStepIndicator } from "@/components/create/AdventureStepIndicator";
-import { Adventure } from "@/types/adventure";
+import { AdventurePhotosStep } from "@/components/create/AdventurePhotosStep";
+import type { Adventure, AdventurePhotoCreate } from "@/types/adventure";
+import type { UploadedImage } from "@/types/media";
 import { CreateAdventureDefaultValues, CreateAdventureFormValues, createAdventureSchema } from "@/features/adventures/createAdventureSchema";
 import { ApiError } from "@/lib/api/ApiError";
+import { deleteUploadedImageRequest, uploadImageRequest } from "@/lib/api/media";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 
 const stepFields: Record<number, Array<keyof CreateAdventureFormValues>> = {
     1: [
@@ -31,11 +34,21 @@ const stepFields: Record<number, Array<keyof CreateAdventureFormValues>> = {
         "latitude",
         "longitude"
     ],
-    3: [
+    3: ["photos"],
+    4: [
         "rating",
         "isFavorite"
-    ]
+    ],
 };
+
+type UploadProgress = {
+    completed: number;
+    total: number;
+};
+
+async function cleanupUploadedImages(publicIds: string[]): Promise<void> {
+    await Promise.allSettled(publicIds.map((publicId) => deleteUploadedImageRequest(publicId)));
+}
 
 function roundCoordinate(value: number | null): number | null {
     if(value === null) {
@@ -65,6 +78,8 @@ export default function EditAdventureScreen() {
 
     const [currentStep, setCurrentStep] = useState(1);
 
+    const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
+
     const {
         control,
         formState: {errors, isDirty},
@@ -87,6 +102,11 @@ export default function EditAdventureScreen() {
     const longitude = useWatch({
         control,
         name: "longitude"
+    });
+
+    const photos = useWatch({
+        control,
+        name: "photos"
     });
 
     const reviewValues = useWatch({
@@ -140,11 +160,64 @@ export default function EditAdventureScreen() {
     }
 
     async function submitUpdate(values: CreateAdventureFormValues) {
-        if(!adventureId) {
+        if(!adventureId || !adventure) {
             return;
         }
 
+        const existingPhotosByUrl = new Map(adventure.photos.map((photo) => [photo.image_url, photo]));
+
+        const newPhotoCount = values.photos.filter((photoUri) => !existingPhotosByUrl.has(photoUri)).length;
+
+        const newlyUploadedImages: UploadedImage[] = [];
+
+        const finalPhotos: AdventurePhotoCreate[] = [];
+
         try {
+            if(newPhotoCount > 0) {
+                setUploadProgress({
+                    completed: 0,
+                    total: newPhotoCount,
+                });
+            }
+
+            let completedUploads = 0;
+
+            // process the photos in their displayed order. preserves first photo as cover image.
+            for(let index = 0; index < values.photos.length; index += 1) {
+                const photoUri = values.photos[index];
+
+                const existingPhoto = existingPhotosByUrl.get(photoUri);
+
+                if(existingPhoto) {
+                    finalPhotos.push({
+                        image_url: existingPhoto.image_url,
+                        public_id: existingPhoto.public_id
+                    });
+
+                    continue;
+                }
+
+                const uploadedImage = await uploadImageRequest({
+                    uri: photoUri,
+                    fileName: null,
+                    mimeType: null,
+                }, index);
+
+                newlyUploadedImages.push(uploadedImage);
+
+                finalPhotos.push({
+                    image_url: uploadedImage.image_url,
+                    public_id: uploadedImage.public_id
+                });
+
+                completedUploads += 1;
+
+                setUploadProgress({
+                    completed: completedUploads,
+                    total: newPhotoCount
+                });
+            }
+
             await updateMutation.mutateAsync({adventureId, payload: {
                 title: values.title.trim(),
                 description: values.description.trim(),
@@ -155,7 +228,7 @@ export default function EditAdventureScreen() {
                 longitude: roundCoordinate(values.longitude),
                 rating: values.rating,
                 is_favorite: values.isFavorite,
-                // Photos omitted on purpose, the update does not change photos
+                photos: finalPhotos,
             }
             });
 
@@ -164,11 +237,16 @@ export default function EditAdventureScreen() {
             router.back();
         }
         catch (error) {
+            await cleanupUploadedImages(newlyUploadedImages.map((image) => image.public_id));
+
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 
             const message = error instanceof ApiError ? error.message : "AdventureLog could not update this adventure.";
 
             Alert.alert("Adventure not updated", message);
+        }
+        finally {
+            setUploadProgress(null);
         }
     }
 
@@ -234,7 +312,7 @@ export default function EditAdventureScreen() {
         );
     }
 
-    const isSaving = updateMutation.isPending;
+    const isSaving = updateMutation.isPending || uploadProgress !== null;
 
     return(
         <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -281,6 +359,16 @@ export default function EditAdventureScreen() {
                     ): null}
 
                     {currentStep === 3 ? (
+                        <AdventurePhotosStep 
+                            photos={photos}
+                            onChangePhotos={(nextPhotos) => setValue("photos", nextPhotos, {
+                                shouldDirty: true,
+                                shouldValidate: true
+                            })}
+                        />
+                    ): null}
+
+                    {currentStep === 4 ? (
                         <AdventureReviewStep 
                             values={reviewValues}
                             heading="Review your changes."
@@ -313,7 +401,8 @@ export default function EditAdventureScreen() {
                     {currentStep < TOTAL_STEPS ? (
                         <Pressable
                             onPress={() => void goForward()}
-                            style={({pressed}) => [styles.primaryButton, pressed && styles.pressed]}
+                            disabled={isSaving}
+                            style={({pressed}) => [styles.primaryButton, pressed && !isSaving && styles.pressed, isSaving && styles.disabled]}
                         >
                             <Text style={styles.primaryButtonText}>
                                 Continue
@@ -322,24 +411,43 @@ export default function EditAdventureScreen() {
                             <Ionicons name="arrow-forward" size={18} color={colors.background} />
                         </Pressable>
                     ): (
-                        <Pressable
-                            accessibilityRole="button"
-                            disabled={isSaving || !isDirty}
-                            onPress={handleSubmit(submitUpdate)}
-                            style={({pressed}) => [styles.primaryButton, pressed && !isSaving && styles.pressed, (isSaving || !isDirty) && styles.disabled]}
-                        >
-                            {isSaving ? (
-                                <ActivityIndicator size="small" color={colors.background} />
-                            ): (
-                                <>
-                                    <Ionicons name="checkmark" size={19} color={colors.background} />
+                        <View style={styles.finalStepActions}>
+                            {uploadProgress && uploadProgress.total > 0 ? (
+                                <View style={styles.uploadProgressCard}>
+                                    <ActivityIndicator size="small" color={colors.forest} />
 
-                                    <Text style={styles.primaryButtonText}>
-                                        Save changes
-                                    </Text>
-                                </>
-                            )}
-                        </Pressable>
+                                    <View style={styles.uploadProgressText}>
+                                        <Text style={styles.uploadProgressTitle}>
+                                            Uploading new photos
+                                        </Text>
+
+                                        <Text style={styles.uploadProgressDescription}>
+                                            {uploadProgress.completed} of{" "}
+                                            {uploadProgress.total} complete
+                                        </Text>
+                                    </View>
+                                </View>
+                            ): null}
+
+                            <Pressable
+                                accessibilityRole="button"
+                                disabled={isSaving || !isDirty}
+                                onPress={handleSubmit(submitUpdate)}
+                                style={({pressed}) => [styles.primaryButton, pressed && !isSaving && styles.pressed, (isSaving || !isDirty) && styles.disabled]}
+                            >
+                                {isSaving ? (
+                                    <ActivityIndicator size="small" color={colors.background} />
+                                ): (
+                                    <>
+                                        <Ionicons name="checkmark" size={19} color={colors.background} />
+
+                                        <Text style={styles.primaryButtonText}>
+                                            Save changes
+                                        </Text>
+                                    </>
+                                )}
+                            </Pressable>
+                        </View>
                     )}
                 </View>
             </KeyboardAvoidingView>
@@ -474,6 +582,33 @@ function createStyles(colors: AppColors) {
             fontSize: 14,
             lineHeight: 21,
             textAlign: "center"
+        },
+        finalStepActions: {
+            flex: 1,
+            gap: spacing.md,
+        },
+        uploadProgressCard: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.md,
+            padding: spacing.md,
+            backgroundColor: colors.surfaceMuted,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 16
+        },
+        uploadProgressText: {
+            flex: 1,
+        },
+        uploadProgressTitle: {
+            color: colors.textPrimary,
+            fontSize: 13,
+            fontWeight: "800",
+        },
+        uploadProgressDescription: {
+            marginTop: 3,
+            color: colors.textSecondary,
+            fontSize: 12,
         }
     });
 }
