@@ -8,6 +8,8 @@ type AdventureReviewStepProps = {
     values: CreateAdventureFormValues;
     onChangeRating: (rating: number) => void;
     onToggleFavorite: () => void;
+    heading?: string;
+    description?: string;
 };
 
 const categoryLabels: Record<CreateAdventureFormValues["category"], string> = {
@@ -18,16 +20,16 @@ const categoryLabels: Record<CreateAdventureFormValues["category"], string> = {
     outdoors: "Outdoors",
 };
 
-export function AdventureReviewStep({values, onChangeRating, onToggleFavorite}: AdventureReviewStepProps) {
+export function AdventureReviewStep({values, onChangeRating, onToggleFavorite, heading = "One last look.", description = "Review the memory before adding it to your journal."}: AdventureReviewStepProps) {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
     return(
         <View>
-            <Text style={styles.heading}>One last look.</Text>
+            <Text style={styles.heading}>{heading}</Text>
 
             <Text style={styles.description}>
-                Review the memory before adding it to your journal.
+                {description}
             </Text>
 
             <View style={styles.card}>
