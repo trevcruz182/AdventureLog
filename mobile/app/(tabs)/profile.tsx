@@ -1,26 +1,110 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, Text, View, Alert, Image, ScrollView } from "react-native";
+import { Pressable, ActivityIndicator, RefreshControl, StyleSheet, Text, View, Alert, Image, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AchievementRow } from "@/components/profile/AchievementRow";
 import { AppearanceSelector } from "@/components/profile/AppearanceSelector";
-import { ProfileCollectionCard } from "@/components/profile/ProfileCollectionCard";
+// import { ProfileCollectionCard } from "@/components/profile/ProfileCollectionCard";
 import { ProfileStats } from "@/components/profile/ProfileStats";
-import { SettingsRow } from "@/components/profile/SettingsRow";
-import { profileAchievements, profileCollections, profileStats } from "@/data/profile";
+// import { SettingsRow } from "@/components/profile/SettingsRow";
+// import { profileAchievements, profileCollections, profileStats } from "@/data/profile";
+import type { AdventureAchievement, ProfileStat } from "@/data/profile";
+import { useAdventures } from "@/features/adventures/useAdventures";
+import { ApiError } from "@/lib/api/ApiError";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { Adventure } from "@/types/adventure";
 
-import { AppearancePreference, AppColors, spacing, useAppTheme } from "@/theme";
+import { AppColors, spacing, useAppTheme } from "@/theme";
 
-const options: Array<{label: string; value: AppearancePreference;}> = [
-    {label: "System", value: "system"},
-    {label: "Light", value: "light"},
-    {label: "Dark", value: "dark"},
-];
+function formatAchievementDate(value: string): string {
+  	const [year, month, day] = value.split("-").map(Number);
+
+	return new Intl.DateTimeFormat("en-US", {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+	}).format(new Date(year, month-1, day));
+}
 
 export default function ProfileScreen() {
     const {colors, resolvedAppearance} = useAppTheme();
+
+	const {
+		data,
+		isLoading,
+		isError,
+		error,
+		refetch,
+		isRefetching
+	} = useAdventures({limit: 100});
+
     const styles = createStyles(colors);
+
+	const adventures: Adventure[] = data?.items ?? [];
+
+	const uniquePlaces = new Set(adventures.map((adventure) => adventure.location_name.trim().toLowerCase()).filter(Boolean)).size;
+
+	const favoriteCount = adventures.filter((adventure) => adventure.is_favorite).length;
+
+	const realProfileStats: ProfileStat[] = [
+		{
+			id: "adventures",
+			label: "Adventures",
+			value: String(data?.total ?? adventures.length)
+		},
+		{
+			id: "places",
+			label: "Places",
+			value: String(uniquePlaces)
+		},
+		{
+			id: "favorites",
+			label: "Favorites",
+			value: String(favoriteCount)
+		},
+	]
+
+	const adventuresOldestFirst = [...adventures].sort((first, second) => first.adventure_date.localeCompare(second.adventure_date));
+
+	const adventuresWithPhotos = adventuresOldestFirst.filter((adventure) => adventure.photos.length > 0);
+
+	const earnedAchievements: AdventureAchievement[] = [];
+
+	const firstAdventure = adventuresOldestFirst[0];
+
+	if(firstAdventure) {
+		earnedAchievements.push({
+			id: "first-mark",
+			title: "First Mark",
+			description: "Logged your first AdventureLog memory.",
+			earnedDate: formatAchievementDate(firstAdventure.adventure_date),
+			icon: "trail-sign-outline"
+		});
+	}
+
+	const fifthAdventure = adventuresOldestFirst[4];
+
+	if(fifthAdventure) {
+		earnedAchievements.push({
+			id: "first-five",
+			title: "First Five",
+			description: "Collected five adventure memories.",
+			earnedDate: formatAchievementDate(fifthAdventure.adventure_date),
+			icon: "compass-outline"
+		});
+	}
+
+	const thirdPhotoAdventure = adventuresWithPhotos[2];
+
+	if(thirdPhotoAdventure) {
+		earnedAchievements.push({
+			id: "memory-keeper",
+			title: "Memory Keeper",
+			description: "Added photos to three adventures.",
+			earnedDate: formatAchievementDate(thirdPhotoAdventure.adventure_date),
+			icon: "camera-outline"
+		});
+	}
 
     const {user, logout} = useAuth();
 
@@ -29,6 +113,13 @@ export default function ProfileScreen() {
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.content}
+			  refreshControl={
+				<RefreshControl 
+					refreshing={isRefetching}
+					onRefresh={() => void refetch()}
+					tintColor={colors.forest}
+				/>
+			  }
             >
               <View style={styles.header}>
                 <View>
@@ -41,18 +132,22 @@ export default function ProfileScreen() {
                   </Text>
                 </View>
 
-                <Pressable
+                {/* <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Edit profile"
                   style={({pressed}) => [styles.editButton, pressed && styles.pressed]}
                 >
                   <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />
-                </Pressable>
+                </Pressable> */}
               </View>
 
               <View style={styles.identity}>
                 <View style={styles.avatarWrapper}>
-                  <Image style={styles.avatar} source={{uri: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80"}} />
+                  <View style={styles.avatar}>
+					<Text style={styles.avatarText}>
+						{user?.display_name?.trim().charAt(0).toUpperCase() || "A"}
+					</Text>
+				  </View>
 
                   <View style={styles.levelBadge}>
                     <Ionicons name="compass" size={14} color="#FFFFFF" />
@@ -72,13 +167,48 @@ export default function ProfileScreen() {
                 </Text>
 
                 <Text style={styles.bio}>
-                  Collecting good views, memorable plaecs, and every rink worth visiting.
+					Your personal collection of places, experiences, and memories.
                 </Text>
               </View>
 
-              <ProfileStats stats={profileStats} />
+              {/* <ProfileStats stats={profileStats} /> */}
+			  {isLoading ? (
+				<View style={styles.profileDataState}>
+					<ActivityIndicator size="small" color={colors.forest} />
 
-              <View style={styles.section}>
+					<Text style={styles.profileDataStateText}>
+						Gathering your adventure history...
+					</Text>
+				</View>
+			  ): isError ? (
+				<View style={styles.profileErrorState}>
+					<Text style={styles.profileErrorTitle}>
+						Adventure history unavailable
+					</Text>
+
+					<Text style={styles.profileErrorDescription}>
+						{error instanceof ApiError ? error.message : "AdventureLog could not load your profile statistics."}
+					</Text>
+
+					<Pressable
+						disabled={isRefetching}
+						onPress={() => void refetch()}
+						style={({pressed}) => [styles.retryButton, pressed && styles.pressed]}
+					>
+						{isRefetching ? (
+							<ActivityIndicator size="small" color={colors.background} />
+						): (
+							<Text style={styles.retryButtonText}>
+								Try again
+							</Text>
+						)}
+					</Pressable>
+				</View>
+			  ): (
+				<ProfileStats stats={realProfileStats} />
+			  )}
+
+              {/* <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <View>
                     <Text style={styles.sectionEyebrow}>
@@ -107,7 +237,7 @@ export default function ProfileScreen() {
                     <ProfileCollectionCard key={collection.id} collection={collection} />
                   ))}
                 </ScrollView>
-              </View>
+              </View> */}
 
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
@@ -128,15 +258,31 @@ export default function ProfileScreen() {
                   </Pressable>
                 </View>
 
-                <View style={styles.panel}>
-                  {profileAchievements.map((achievement, index) => (
-                    <AchievementRow 
-                      key={achievement.id}
-                      achievement={achievement}
-                      isLast={index === profileAchievements.length -1}
-                    />
-                  ))}
-                </View>
+                {/* <View style={styles.panel}> */}
+				{!isLoading && !isError ? (
+					earnedAchievements.length > 0 ? (
+						<View style={styles.panel}>
+							{earnedAchievements.map((achievement, index) => (
+								<AchievementRow 
+									key={achievement.id}
+									achievement={achievement}
+									// showDivider={index < earnedAchievements.length-1}
+								/>
+							))}
+						</View>
+					) : (
+						<View style={styles.emptyAchievementState}>
+							<Text style={styles.emptyAchievementTitle}>
+								Your first bade is waiting
+							</Text>
+
+							<Text style={styles.emptyAchievementDescription}>
+								Log your first adventure to earn First Mark.
+							</Text>
+						</View>
+					)
+				): null}
+                {/* </View> */}
               </View>
 
               <View style={styles.section}>
@@ -163,7 +309,7 @@ export default function ProfileScreen() {
                   Settings
                 </Text>
 
-                <View style={styles.panel}>
+                {/* <View style={styles.panel}>
                   <SettingsRow icon="person-outline" title="Personal information" description="Name, username, and profile photo" />
 
                   <SettingsRow icon="notifications-outline" title="Notifications" description="Reminders, achievements, and activity" />
@@ -171,7 +317,7 @@ export default function ProfileScreen() {
                   <SettingsRow icon="shield-checkmark-outline" title="Privacy and data" description="Location, photos, and account data" />
 
                   <SettingsRow icon="help-circle-outline" title="Help and feedback" description="Get support or share an idea" isLast />
-                </View>
+                </View> */}
               </View>
 
               <Pressable
@@ -258,11 +404,18 @@ function createStyles(colors: AppColors) {
       avatar: {
         width: 104,
         height: 104,
-        backgroundColor: colors.surfaceMuted,
+		alignItems: "center",
+		justifyContent: "center",
+        backgroundColor: colors.forest,
         borderWidth: 4,
         borderColor: colors.surface,
-        borderRadius: 40,
+        borderRadius: 52,
       },
+	  avatarText: {
+		color: colors.background,
+		fontSize: 38,
+		fontWeight: "800"
+	  },
       levelBadge: {
         position: "absolute",
         right: -3,
@@ -376,6 +529,81 @@ function createStyles(colors: AppColors) {
         fontSize: 11,
         fontWeight: "600",
         textAlign: "center"
-      }
+      },
+	  profileDataState: {
+		minHeight: 110,
+		alignItems: "center",
+		justifyContent: "center",
+		gap: spacing.sm,
+		marginTop: spacing.lg,
+		padding: spacing.lg,
+		backgroundColor: colors.surface,
+		borderWidth: 1,
+		borderColor: colors.border,
+		borderRadius: 22,
+	  },
+	  profileDataStateText: {
+		color: colors.textSecondary,
+		fontSize: 13,
+		fontWeight: "600"
+	  },
+	  profileErrorState: {
+		alignItems: "center",
+		marginTop: spacing.lg,
+		padding: spacing.lg,
+		backgroundColor: colors.surface,
+		borderWidth: 1,
+		borderColor: colors.danger,
+		borderRadius: 22,
+	  },
+	  profileErrorTitle: {
+		color: colors.textPrimary,
+		fontSize: 15,
+		fontWeight: "800",
+		textAlign: "center"
+	  },
+	  profileErrorDescription: {
+		marginTop: spacing.sm,
+		color: colors.textSecondary,
+		fontSize: 13,
+		lineHeight: 19,
+		textAlign: "center"
+	  },
+	  retryButton: {
+		minWidth: 100,
+		minHeight: 42,
+		alignItems: "center",
+		justifyContent: "center",
+		marginTop: spacing.md,
+		paddingHorizontal: spacing.lg,
+		backgroundColor: colors.forest,
+		borderRadius: 999
+	  },
+	  retryButtonText: {
+		color: colors.background,
+		fontSize: 13,
+		fontWeight: "800"
+	  },
+	  emptyAchievementState: {
+		marginTop: spacing.md,
+		padding: spacing.xl,
+		backgroundColor: colors.surface,
+		borderWidth: 1,
+		borderColor: colors.border,
+		borderRadius: 22,
+	  },
+	  emptyAchievementTitle: {
+		color: colors.textPrimary,
+		fontSize: 15,
+		fontWeight: "800",
+		textAlign: "center"
+	  },
+	  emptyAchievementDescription: {
+		marginTop: spacing.sm,
+		color: colors.textSecondary,
+		fontSize: 13,
+		lineHeight: 19,
+		textAlign: "center"
+	  }
     });
   }

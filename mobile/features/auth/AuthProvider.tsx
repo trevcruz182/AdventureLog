@@ -3,7 +3,7 @@ import { createContext, PropsWithChildren, useCallback, useContext, useEffect, u
 import { loginRequest, registerRequest } from "@/lib/api/auth";
 import { getCurrentUserRequest } from "@/lib/api/users";
 import { clearTokens, getRefreshToken, saveTokens, getAccessToken } from "@/lib/auth/tokenStorage";
-import { refreshRequest } from "@/lib/api/auth";
+// import { refreshRequest } from "@/lib/api/auth";
 import type { AuthUser, LoginPayload, RegisterPayload } from "@/types/auth";
 import { ApiError } from "@/lib/api/ApiError";
 
@@ -42,9 +42,6 @@ export function AuthProvider({children}: PropsWithChildren) {
                 getRefreshToken(),
             ]);
 
-            console.log("Stored access token:", Boolean(accessToken));
-            console.log("Stored refresh token:", Boolean(refreshToken));
-
             if(!accessToken && !refreshToken) {
                 setUser(null);
                 return;
@@ -75,9 +72,7 @@ export function AuthProvider({children}: PropsWithChildren) {
 
         await saveTokens(tokens);
 
-        const savedRefreshToken = await getRefreshToken();
-
-        console.log("Refresh token saved: ", Boolean(savedRefreshToken));
+        // const savedRefreshToken = await getRefreshToken();
 
         try {
             const currentUser = await getCurrentUserRequest();
