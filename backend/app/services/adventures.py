@@ -101,8 +101,6 @@ def update_adventure(db: Session, *, adventure: Adventure, payload: AdventureUpd
     if "photos" in payload.model_fields_set:
         old_public_ids = [photo.public_id for photo in adventure.photos]
 
-        # replace_adventure_photos(db, adventure, payload.photos or [])
-
     for field_name, value in update_data.items():
         setattr(adventure, field_name, value)
 

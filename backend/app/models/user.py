@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.models.adventure import Adventure
+    from app.models.collection import Collection
 
 from uuid import UUID, uuid4
 
@@ -29,3 +30,5 @@ class User(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
 
     adventures: Mapped[list["Adventure"]] = relationship(back_populates="user", cascade="all, delete-orphan", passive_deletes=True)
+
+    collections: Mapped[list["Collection"]] = relationship(back_populates="user", cascade="all, delete-orphan", passive_deletes=True)

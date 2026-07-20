@@ -1,4 +1,8 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.collection import Collection
 
 from datetime import date
 from decimal import Decimal
@@ -10,6 +14,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 from app.models.enums import AdventureCategory, AdventureStatus
 from app.models.mixins import TimestampMixin
+from app.models.collection import collection_adventures
 
 class Adventure(TimestampMixin, Base):
     __tablename__ = "adventures"
@@ -53,3 +58,5 @@ class Adventure(TimestampMixin, Base):
     user: Mapped["User"] = relationship(back_populates="adventures")
 
     photos: Mapped[list["AdventurePhoto"]] = relationship(back_populates="adventure", cascade="all, delete-orphan", passive_deletes=True, order_by="AdventurePhoto.position")
+
+    collections: Mapped[list["Collection"]] = relationship(secondary=collection_adventures, back_populates="adventures")
