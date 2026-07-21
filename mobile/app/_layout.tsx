@@ -51,6 +51,22 @@ function RootNavigator() {
               animation: "slide_from_right"
             }}
           />
+
+          <Stack.Screen 
+            name="collections/index"
+            options={{
+              presentation: "card",
+              animation: "slide_from_right"
+            }}
+          />
+
+          <Stack.Screen 
+            name="collections/create"
+            options={{
+              presentation: "card",
+              animation: "slide_from_bottom"
+            }}
+          />
         </Stack.Protected>
       </Stack>
     </>

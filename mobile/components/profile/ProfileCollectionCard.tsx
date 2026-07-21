@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { AdventureCollection } from "@/data/profile";
+// import { AdventureCollection } from "@/data/profile";
+import type { AdventureCollection } from "@/types/collection";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 
 type ProfileCollectionCardProps = {
@@ -12,7 +13,7 @@ export function ProfileCollectionCard({collection}: ProfileCollectionCardProps) 
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
-    const progress = Math.min(collection.completed / collection.total, 1);
+    const progress = Math.min(collection.adventure_count / collection.target_count, 1);
 
     return(
         <Pressable
@@ -40,8 +41,8 @@ export function ProfileCollectionCard({collection}: ProfileCollectionCardProps) 
             </View>
 
             <Text style={styles.progressText}>
-                {collection.completed} of{" "}
-                {collection.total}
+                {collection.adventure_count} of{" "}
+                {collection.target_count}
             </Text>
         </Pressable>
     );
