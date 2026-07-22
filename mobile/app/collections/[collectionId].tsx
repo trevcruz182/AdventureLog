@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { FlatList, ActivityIndicator, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { FlatList, Alert, ActivityIndicator, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { JournalAdventureCard } from "@/components/journal/JournalAdventureCard";
-import { useCollection } from "@/features/collections/useCollections";
+import { useCollection, useDeleteCollection } from "@/features/collections/useCollections";
+import type { AdventureCollectionDetail } from "@/types/collection";
 import { ApiError } from "@/lib/api/ApiError";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 
@@ -13,6 +14,8 @@ export default function CollectionDetailScreen() {
     const styles = createStyles(colors);
 
     const params = useLocalSearchParams<{collectionId?: string | string[]}>();
+
+    const deleteMutation = useDeleteCollection();
 
     const collectionId = Array.isArray(params.collectionId) ? params.collectionId[0] : params.collectionId;
 
@@ -77,6 +80,33 @@ export default function CollectionDetailScreen() {
                 </View>
             </SafeAreaView>
         );
+    }
+
+    const isDeleting = deleteMutation.isPending;
+
+    function confirmDelete(currentCollection: AdventureCollectionDetail) {
+        Alert.alert("Delete collection?", `"${currentCollection.title}" will be deleted. Its adventures and photos will remain in your Journal.`, [
+            {
+                text: "Cancel",
+                style: "cancel"
+            },
+            {
+                text: "Delete",
+                style: "destructive",
+                onPress: async () => {
+                    try {
+                        await deleteMutation.mutateAsync(currentCollection.id);
+
+                        router.back();
+                    }
+                    catch (deleteError) {
+                        const message = deleteError instanceof ApiError ? deleteError.message : "AdventureLog could not delete this collection.";
+
+                        Alert.alert("Collection not deleted", message);
+                    }
+                }
+            }
+        ])
     }
 
     const progress = Math.min(collection.adventure_count / collection.target_count, 1);
@@ -170,6 +200,26 @@ export default function CollectionDetailScreen() {
                             <View style={[styles.progressFill, {width: `${progress * 100}%`}]} />
                         </View>
 
+                        <View style={styles.collectionActions}>
+                            <Pressable
+                                accessibilityRole="button"
+                                disabled={isDeleting}
+                                onPress={() => router.push({
+                                    pathname: "/collections/edit",
+                                    params: {
+                                        collectionId: collection.id
+                                    }
+                                })}
+                                style={({pressed}) => [styles.editAction, pressed && styles.pressed]}
+                            >
+                                <Ionicons name="pencil-outline" size={17} color={colors.forest} />
+
+                                <Text style={styles.editActionText}>
+                                    Edit collection
+                                </Text>
+                            </Pressable>
+                        </View>
+
                         <View style={styles.divider} />
 
                         <Text style={styles.adventuresTitle}>
@@ -212,6 +262,38 @@ export default function CollectionDetailScreen() {
                             <Text style={styles.manageActionText}>
                                 Add adventures
                             </Text>
+                        </Pressable>
+                    </View>
+                }
+                ListFooterComponent={
+                    <View style={styles.dangerZone}>
+                        <View style={styles.divider} />
+
+                        <Text style={styles.dangerLabel}>
+                            Collection settings
+                        </Text>
+
+                        <Text style={styles.dangerDescription}>
+                            Deleting this collection will not delete any adventures or photos.
+                        </Text>
+
+                        <Pressable
+                            accessibilityRole="button"
+                            disabled={isDeleting}
+                            onPress={() => confirmDelete(collection)}
+                            style={({pressed}) => [styles.deleteButton, pressed && !isDeleting && styles.pressed, isDeleting && styles.disabled]}
+                        >
+                            {isDeleting ? (
+                                <ActivityIndicator size="small" color={colors.danger} />
+                            ): (
+                                <>
+                                    <Ionicons name="trash-outline" size={18} color={colors.danger} />
+
+                                    <Text style={styles.deleteButtonText}>
+                                        Delete collection
+                                    </Text>
+                                </>
+                            )}
                         </Pressable>
                     </View>
                 }
@@ -430,6 +512,64 @@ function createStyles(colors: AppColors) {
             color: colors.background,
             fontSize: 13,
             fontWeight: "800"
+        },
+        collectionActions: {
+            flexDirection: "row",
+            marginTop: spacing.lg,
+        },
+        editAction: {
+            minHeight: 44,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: spacing.sm,
+            paddingHorizontal: spacing.lg,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 999
+        },
+        editActionText: {
+            color: colors.forest,
+            fontSize: 13,
+            fontWeight: "800"
+        },
+        dangerZone: {
+            paddingTop: spacing.lg,
+            paddingBottom: spacing.xl,
+        },
+        dangerLabel: {
+            color: colors.danger,
+            fontSize: 12,
+            fontWeight: "800",
+            letterSpacing: 0.8,
+            textTransform: "uppercase"
+        },
+        dangerDescription: {
+            marginTop: spacing.sm,
+            color: colors.textSecondary,
+            fontSize: 13,
+            lineHeight: 19
+        },
+        deleteButton: {
+            minHeight: 48,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: spacing.sm,
+            marginTop: spacing.lg,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.danger,
+            borderRadius: 18
+        },
+        deleteButtonText: {
+            color: colors.danger,
+            fontSize: 13,
+            fontWeight: "800"
+        },
+        disabled: {
+            opacity: 0.55
         }
     });
 }

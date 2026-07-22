@@ -83,6 +83,14 @@ function RootNavigator() {
               animation: "slide_from_bottom"
             }}
           />
+
+          <Stack.Screen 
+            name="collections/edit"
+            options={{
+              presentation: "card",
+              animation: "slide_from_bottom"
+            }}
+          />
         </Stack.Protected>
       </Stack>
     </>

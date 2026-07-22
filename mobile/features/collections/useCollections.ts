@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { listCollectionsRequest, createCollectionRequest, getCollectionRequest } from "@/lib/api/collections";
-import type { CollectionCreatePayload, AdventureCollectionDetail } from "@/types/collection";
+import type { CollectionCreatePayload, AdventureCollectionDetail, CollectionUpdatePayload } from "@/types/collection";
 import { collectionQueryKeys } from "./collectionQueries";
-import { addAdventureToCollectionRequest, removeAdventureFromCollectionRequest } from "@/lib/api/collections";
+import { addAdventureToCollectionRequest, removeAdventureFromCollectionRequest, deleteCollectionRequest, updateCollectionRequest } from "@/lib/api/collections";
 
 export function useCollections() {
     return useQuery({
@@ -63,6 +63,38 @@ export function useRemoveAdventureFromCollection() {
                     queryKey: collectionQueryKeys.lists()
                 })
             ]);
+        }
+    });
+}
+
+export function useUpdateCollection() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({collectionId, payload}: {collectionId: string; payload: CollectionUpdatePayload;}) => updateCollectionRequest(collectionId, payload),
+        onSuccess: async (updateCollection) => {
+            queryClient.setQueryData(collectionQueryKeys.detail(updateCollection.id), updateCollection);
+
+            await queryClient.invalidateQueries({
+                queryKey: collectionQueryKeys.lists()
+            });
+        }
+    });
+}
+
+export function useDeleteCollection() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (collectionId: string) => deleteCollectionRequest(collectionId),
+        onSuccess: async (_, collectionId) => {
+            queryClient.removeQueries({
+                queryKey: collectionQueryKeys.detail(collectionId)
+            });
+
+            await queryClient.invalidateQueries({
+                queryKey: collectionQueryKeys.lists()
+            });
         }
     });
 }
