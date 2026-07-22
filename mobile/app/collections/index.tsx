@@ -8,14 +8,19 @@ import { ApiError } from "@/lib/api/ApiError";
 import type { AdventureCollection } from "@/types/collection";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 
-function CollectionListCard({collection}: {collection: AdventureCollection}) {
+function CollectionListCard({collection, onPress}: {collection: AdventureCollection; onPress: () => void}) {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
     const progress = Math.min(collection.adventure_count / collection.target_count, 1);
 
     return(
-        <View style={styles.card}>
+        <Pressable 
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${collection.title}`}
+            onPress={onPress}
+            style={({pressed}) => [styles.card, pressed && styles.cardPressed]}
+        >
             <View style={styles.cardTopRow}>
                 <View style={styles.iconContainer}>
                     <Ionicons name={collection.icon} size={25} color={colors.clay} />
@@ -38,7 +43,7 @@ function CollectionListCard({collection}: {collection: AdventureCollection}) {
             <View style={styles.progressTrack}>
                 <View style={[styles.progressFill, {width: `${progress*100}%`}]} />
             </View>
-        </View>
+        </Pressable>
     );
 }
 
@@ -141,7 +146,17 @@ export default function CollectionScreen() {
             <FlatList 
                 data={collections ?? []}
                 keyExtractor={(collection) => collection.id}
-                renderItem={({item}) => <CollectionListCard collection={item} />}
+                renderItem={({item}) => (
+                    <CollectionListCard 
+                        collection={item}
+                        onPress={() => router.push({
+                            pathname: "/collections/[collectionId]",
+                            params: {
+                                collectionId: item.id,
+                            }
+                        })}
+                    />
+                )}
                 refreshControl={
                     <RefreshControl 
                         refreshing={isRefetching}
@@ -389,6 +404,10 @@ function createStyles(colors: AppColors) {
             color: colors.background,
             fontSize: 13,
             fontWeight: "800"
+        },
+        cardPressed: {
+            opacity: 0.88,
+            transform: [{scale: 0.99}]
         }
     });
 }

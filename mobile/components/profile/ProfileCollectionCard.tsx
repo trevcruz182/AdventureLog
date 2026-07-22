@@ -7,9 +7,10 @@ import { AppColors, spacing, useAppTheme } from "@/theme";
 
 type ProfileCollectionCardProps = {
     collection: AdventureCollection;
+    onPress: () => void;
 };
 
-export function ProfileCollectionCard({collection}: ProfileCollectionCardProps) {
+export function ProfileCollectionCard({collection, onPress}: ProfileCollectionCardProps) {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
@@ -18,6 +19,8 @@ export function ProfileCollectionCard({collection}: ProfileCollectionCardProps) 
     return(
         <Pressable
             accessibilityRole="button"
+            accessibilityLabel={`Open ${collection.title}`}
+            onPress={onPress}
             style={({pressed}) => [styles.card, pressed && styles.pressed]}
         >
             <View style={styles.topRow}>

@@ -312,7 +312,16 @@ export default function ProfileScreen() {
               style={styles.horizontalScroll}
             >
               {collectionsQuery.data.map((collection: AdventureCollection) => (
-                <ProfileCollectionCard key={collection.id} collection={collection} />
+			  	<ProfileCollectionCard 
+					key={collection.id} 
+					collection={collection} 
+					onPress={() => router.push({
+						pathname: "/collections/[collectionId]",
+						params: {
+							collectionId: collection.id,
+						}
+					})}
+					/>
               ))}
             </ScrollView>
           ): (
@@ -325,11 +334,11 @@ export default function ProfileScreen() {
 
               <View style={styles.emptyCollectionContent}>
                 <Text style={styles.emptyCollectionTitle}>
-                  No collections yet
+					No collections yet
                 </Text>
 
                 <Text style={styles.emptyCollectionDescription}>
-                  Create themed groups for the adventures you want to remember.
+					Create themed groups for the adventures you want to remember.
                 </Text>
 
                 <Ionicons name="arrow-forward" size={20} color={colors.forest} />
