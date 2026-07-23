@@ -26,6 +26,7 @@ const TOTAL_STEPS = 4;
 const stepFields: Record<number, Array<keyof CreateAdventureFormValues>> = {
     1: [
         "title",
+        "status",
         "category",
         "description",
         "date"
@@ -123,6 +124,7 @@ export default function EditAdventureScreen() {
 
         reset({
             title: adventure.title,
+            status: adventure.status,
             category: adventure.category,
             description: adventure.description,
             date: adventure.adventure_date,
@@ -227,18 +229,20 @@ export default function EditAdventureScreen() {
                 });
             }
 
-            await updateMutation.mutateAsync({adventureId, payload: {
-                title: values.title.trim(),
-                description: values.description.trim(),
-                category: values.category,
-                adventure_date: values.date,
-                location_name: values.locationName.trim(),
-                latitude: roundCoordinate(values.latitude),
-                longitude: roundCoordinate(values.longitude),
-                rating: values.rating,
-                is_favorite: values.isFavorite,
-                photos: finalPhotos,
-            }
+            await updateMutation.mutateAsync({adventureId, 
+                payload: {
+                    title: values.title.trim(),
+                    status: values.status,
+                    description: values.description.trim(),
+                    category: values.category,
+                    adventure_date: values.date,
+                    location_name: values.locationName.trim(),
+                    latitude: roundCoordinate(values.latitude),
+                    longitude: roundCoordinate(values.longitude),
+                    rating: values.rating,
+                    is_favorite: values.isFavorite,
+                    photos: finalPhotos,
+                }
             });
 
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

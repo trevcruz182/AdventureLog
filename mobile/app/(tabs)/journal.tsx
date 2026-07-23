@@ -5,17 +5,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
 import { JournalAdventureCard } from "@/components/journal/JournalAdventureCard";
-import { AdventureCategory } from "@/data/home";
-// import { JournalAdventure, journalAdventures } from "@/data/journal";
 import { useNetworkStatus } from "@/features/network/NetworkProvider";
 import { OfflineDataState } from "@/components/network/OfflineDataState";
 import { useAdventures } from "@/features/adventures/useAdventures";
 import { ApiError } from "@/lib/api/ApiError";
-import type { Adventure } from "@/types/adventure";
+import type { Adventure, AdventureCategory, AdventureStatus } from "@/types/adventure";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 import { RefreshControl } from "react-native-gesture-handler";
 
 type CategoryFilter = "all" | AdventureCategory;
+
+type StatusFilter = "all" | AdventureStatus;
 
 type JournalSection = {
     title: string;
@@ -59,6 +59,28 @@ const categoryFilters: Array<{
     },
 ];
 
+const statusFilters: Array<{
+    label: string;
+    value: StatusFilter;
+    icon: React.ComponentProps<typeof Ionicons>["name"];
+}> = [
+    {
+        label: "All",
+        value: "all",
+        icon: "apps-outline"
+    },
+    {
+        label: "Completed",
+        value: "completed",
+        icon: "checkmark-circle-outline"
+    },
+    {
+        label: "Planned",
+        value: "wishlist",
+        icon: "calendar-outline"
+    },
+]
+
 export default function JournalScreen() {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
@@ -76,6 +98,7 @@ export default function JournalScreen() {
 
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
+    const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
 
     const sections = useMemo<JournalSection[]>(() => {
         const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -84,13 +107,14 @@ export default function JournalScreen() {
 
         const filteredAdventures = adventures.filter((adventure) => {
             const matchesCategory = selectedCategory === "all" || adventure.category === selectedCategory;
+            const matchesStatus = selectedStatus === "all" || adventure.status === selectedStatus;
 
             const matchesSearch = normalizedQuery.length === 0 ||
                                     adventure.title.toLowerCase().includes(normalizedQuery) ||
                                     adventure.location_name.toLowerCase().includes(normalizedQuery) ||
                                     adventure.description.toLowerCase().includes(normalizedQuery);
 
-            return matchesCategory && matchesSearch;
+            return matchesCategory && matchesStatus && matchesSearch;
         });
 
         const grouped = filteredAdventures.reduce((groups, adventure) => {
@@ -114,10 +138,10 @@ export default function JournalScreen() {
             title,
             data: sectionData
         }));
-    }, [data, searchQuery, selectedCategory]);
+    }, [data, searchQuery, selectedCategory, selectedStatus]);
 
     const resultCount = sections.reduce((total, section) => total + section.data.length, 0);
-    const hasActiveFilters = searchQuery.trim().length > 0 || selectedCategory !== "all";
+    const hasActiveFilters = searchQuery.trim().length > 0 || selectedCategory !== "all" || selectedStatus !== "all";
 
     if(!isOnline && data === undefined) {
         return(
@@ -237,39 +261,31 @@ export default function JournalScreen() {
                                 </Pressable>
                             ): null}
                         </View>
-
-                        {/* <SectionList
-                            horizontal
-                            sections={[
-                                {
-                                    title: "Categories",
-                                    data: categoryFilters
-                                }
-                            ]}
-                            keyExtractor={(item) => item.value}
-                            renderItem={({item}) => {
-                                const isSelected = selectedCategory === item.value;
+                        
+                        <View style={styles.statusFilters}>
+                            {statusFilters.map((filter) => {
+                                const isSelected = selectedStatus === filter.value;
 
                                 return(
                                     <Pressable
-                                        onPress={() => setSelectedCategory(item.value)}
-                                        style={({pressed}) => [
-                                            styles.filterChip, isSelected && styles.filterChipSelected, pressed && styles.pressed
-                                        ]}
+                                        key={filter.value}
+                                        accessibilityRole="button"
+                                        accessibilityState={{
+                                            selected: isSelected
+                                        }}
+                                        onPress={() => setSelectedStatus(filter.value)}
+                                        style={({pressed}) => [styles.statusFilter, isSelected && styles.statusFilterSelected, pressed && styles.pressed]}
                                     >
-                                        <Ionicons name={item.icon} size={15} color={isSelected ? colors.background : colors.textSecondary} />
+                                        <Ionicons name={filter.icon} size={16} color={isSelected ? colors.background : colors.textSecondary} />
 
-                                        <Text style={[styles.filterText, isSelected && styles.filterTextSelected]}>
-                                            {item.label}
+                                        <Text style={[styles.statusFilterText, isSelected && styles.statusFilterTextSelected]}>
+                                            {filter.label}
                                         </Text>
                                     </Pressable>
                                 );
-                            }}
-                            renderSectionHeader={() => null}
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.filters}
-                            style={styles.filterList}
-                        /> */}
+                            })}
+                        </View>
+
                         <ScrollView
                             horizontal
                             showsHorizontalScrollIndicator={false}
@@ -344,7 +360,7 @@ export default function JournalScreen() {
                         </Text>
 
                         <Text style={styles.emptyDescription}>
-                            {hasActiveFilters ? "Try another search or category to rediscover an adventure." : "Log your first adventure and it will appear here as part of your personal timeline."}
+                            {hasActiveFilters ? "Try another search, status, or category." : "Log or plan your first adventure and it will appear here."}
                         </Text>
 
                         {hasActiveFilters ? (
@@ -352,6 +368,7 @@ export default function JournalScreen() {
                                 onPress={() => {
                                     setSearchQuery("");
                                     setSelectedCategory("all");
+                                    setSelectedStatus("all");
                                 }}
                                 style={({pressed}) => [
                                     styles.resetButton, pressed && styles.pressed
@@ -607,6 +624,36 @@ function createStyles(colors: AppColors) {
             color: colors.background,
             fontSize: 13,
             fontWeight: "800"
+        },
+        statusFilters: {
+            flexDirection: "row",
+            gap: spacing.sm,
+            marginTop: spacing.lg,
+        },
+        statusFilter: {
+            flex: 1,
+            minHeight: 44,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: spacing.xs,
+            paddingHorizontal: spacing.sm,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 16
+        },
+        statusFilterSelected: {
+            backgroundColor: colors.forest,
+            borderColor: colors.forest
+        },
+        statusFilterText: {
+            color: colors.textSecondary,
+            fontSize: 12,
+            fontWeight: "800",
+        },
+        statusFilterTextSelected: {
+            color: colors.background
         }
     });
 }

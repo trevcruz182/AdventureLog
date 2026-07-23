@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Controller, Control, FieldErrors } from "react-hook-form";
+import { Controller, Control, FieldErrors, useWatch } from "react-hook-form";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { FieldError } from "./FieldError";
@@ -48,13 +48,74 @@ export function AdventureBasicsStep({control, errors}: AdventureBasicsStepProps)
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
+    const selectedStatus = useWatch({
+        control,
+        name: "status"
+    });
+
     return(
         <View>
-            <Text style={styles.heading}>Tell the story.</Text>
+            <Text style={styles.heading}>
+                {selectedStatus === "wishlist" ? "Plan the adventure." : "Tell the story."}
+            </Text>
 
             <Text style={styles.description}>
-                Start with the details that make this memory easy to recognize later.
+                {selectedStatus === "wishlist" ? "Save somewhere you want to go or something you want to experience." : "Start with the details that make this memory easy to recognize later."}
             </Text>
+
+            <View style={styles.field}>
+                <Text style={styles.label}>
+                    Adventure status
+                </Text>
+
+                <Controller
+                    control={control}
+                    name="status"
+                    render={({field: {value, onChange}}) => (
+                        <View style={styles.statusOptions}>
+                            <Pressable
+                                accessibilityRole="button"
+                                accessibilityState={{selected: value === "completed"}}
+                                onPress={() => onChange("completed")}
+                                style={({pressed}) => [styles.statusOption, value === "completed" && styles.statusOptionSelected, pressed && styles.pressed]}
+                            >
+                                <Ionicons name="checkmark-circle-outline" size={21} color={value === "completed" ? colors.background : colors.forest} />
+
+                                <View style={styles.statusText}>
+                                    <Text style={[styles.statusLabel, value === "completed" && styles.statusLabelSelected]}>
+                                        Completed
+                                    </Text>
+
+                                    <Text style={[styles.statusDescription, value === "completed" && styles.statusDescriptionSelected]}>
+                                        A memory from an adventure you took.
+                                    </Text>
+                                </View>
+                            </Pressable>
+
+                            <Pressable
+                                accessibilityRole="button"
+                                accessibilityState={{selected: value === "wishlist"}}
+                                onPress={() => onChange("wishlist")}
+                                style={({pressed}) => [styles.statusOption, value === "wishlist" && styles.statusOptionSelected, pressed && styles.pressed]}
+                            >
+                                <Ionicons name="calendar-outline" size={21} color={value === "wishlist" ? colors.background : colors.forest} />
+
+                                <View style={styles.statusText}>
+                                    <Text style={[styles.statusLabel, value === "wishlist" && styles.statusLabelSelected]}>
+                                        Planned
+                                    </Text>
+
+                                    <Text style={[styles.statusDescription, value === "wishlist" && styles.statusDescriptionSelected]}>
+                                        Something you want to experience.
+                                    </Text>
+                                </View>
+                            </Pressable>
+                        </View>
+                    )}
+                />
+
+                <FieldError message={errors.status?.message} />
+            </View>
 
             <View style={styles.field}>
                 <Text style={styles.label}>Adventure title</Text>
@@ -145,7 +206,9 @@ export function AdventureBasicsStep({control, errors}: AdventureBasicsStepProps)
             </View>
 
             <View style={styles.field}>
-                <Text style={styles.label}>Date</Text>
+                <Text style={styles.label}>
+                    {selectedStatus === "wishlist" ? "Planned date" : "Adventure date"}
+                </Text>
 
                 <Controller 
                     control={control}
@@ -272,6 +335,46 @@ function createStyles(colors: AppColors) {
             flex: 1,
             color: colors.textPrimary,
             fontSize: 15,
+        },
+        statusOptions: {
+            gap: spacing.sm
+        },
+        statusOption: {
+            minHeight: 76,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.md,
+            paddingHorizontal: spacing.lg,
+            paddingVertical: spacing.md,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 18
+        },
+        statusOptionSelected: {
+            backgroundColor: colors.forest,
+            borderColor: colors.forest
+        },
+        statusText: {
+            flex: 1,
+        },
+        statusLabel: {
+            color: colors.textPrimary,
+            fontSize: 14,
+            fontWeight: "800"
+        },
+        statusLabelSelected: {
+            color: colors.background
+        },
+        statusDescription: {
+            marginTop: 3,
+            color: colors.textSecondary,
+            fontSize: 12,
+            lineHeight: 17,
+        },
+        statusDescriptionSelected: {
+            color: colors.background,
+            opacity: 0.82
         },
         pressed: {
             opacity: 0.82,

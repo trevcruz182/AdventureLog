@@ -24,6 +24,8 @@ export function AdventureReviewStep({values, onChangeRating, onToggleFavorite, h
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
+    const isPlanned = values.status === "wishlist";
+
     return(
         <View>
             <Text style={styles.heading}>{heading}</Text>
@@ -52,6 +54,14 @@ export function AdventureReviewStep({values, onChangeRating, onToggleFavorite, h
                         </Pressable>
                     </View>
 
+                    <View style={[styles.statusBadge, isPlanned && styles.statusBadgePlanned]}>
+                        <Ionicons name={isPlanned ? "calendar-outline" : "checkmark-circle-outline"} size={14} color={isPlanned ? colors.clay : colors.forest} />
+
+                        <Text style={[styles.statusBadgeText, isPlanned && styles.statusBadgeTextPlanned]}>
+                            {isPlanned ? "Planned" : "Completed"}
+                        </Text>
+                    </View>
+
                     <Text style={styles.title}>{values.title}</Text>
 
                     <View style={styles.metadataRow}>
@@ -78,25 +88,34 @@ export function AdventureReviewStep({values, onChangeRating, onToggleFavorite, h
                 </View>
             </View>
 
-            <View style={styles.ratingSection}>
-                <Text style={styles.ratingLabel}>
-                    How would you rate it?
-                </Text>
+            {!isPlanned ? (
+                <View style={styles.ratingSection}>
+                    <Text style={styles.ratingLabel}>
+                        How would you rate it?
+                    </Text>
 
-                <View style={styles.stars}>
-                    {[1, 2, 3, 4, 5].map((rating) => (
-                        <Pressable
-                            key={rating}
-                            onPress={() => onChangeRating(rating)}
-                            hitSlop={5}
-                        >
-                            <Ionicons name={rating <= values.rating ? "star" : "star-outline"} size={32} color={rating <= values.rating ? colors.warning : colors.textMuted} />
-                        </Pressable>
-                    ))}
+                    <View style={styles.stars}>
+                        {[1, 2, 3, 4, 5].map((rating) => (
+                            <Pressable
+                                key={rating}
+                                onPress={() => onChangeRating(rating)}
+                                hitSlop={5}
+                            >
+                                <Ionicons name={rating <= values.rating ? "star" : "star-outline"} size={32} color={rating <= values.rating ? colors.warning : colors.textMuted} />
+                            </Pressable>
+                        ))}
+                    </View>
                 </View>
-            </View>
+            ) : null}
 
             <View style={styles.summary}>
+                <SummaryRow
+                    icon={isPlanned ? "calendar-outline" : "checkmark-circle-outline"}
+                    label="Status"
+                    value={isPlanned ? "Planned" : "Completed"}
+                    colors={colors}
+                />
+
                 <SummaryRow
                     icon="images-outline"
                     label="Photos"
@@ -258,6 +277,28 @@ function createStyles(colors: AppColors) {
             color: colors.textPrimary,
             fontSize: 13,
             fontWeight: "800"
+        },
+        statusBadge: {
+            alignSelf: "flex-start",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.xs,
+            marginTop: spacing.md,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm,
+            backgroundColor: colors.surfaceMuted,
+            borderRadius: 999
+        },
+        statusBadgePlanned: {
+            backgroundColor: colors.surfaceMuted
+        },
+        statusBadgeText: {
+            color: colors.forest,
+            fontSize: 12,
+            fontWeight: "800"
+        },
+        statusBadgeTextPlanned: {
+            color: colors.clay
         }
     });
 }

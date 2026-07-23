@@ -35,7 +35,7 @@ import { UploadedImage } from "@/types/media";
 const TOTAL_STEPS = 4;
 
 const stepFields: Record<number, Array<keyof CreateAdventureFormValues>> = {
-    1: ["title", "category", "description", "date"],
+    1: ["title", "status", "category", "description", "date"],
     2: ["locationName", "latitude", "longitude"],
     3: ["photos"],
     4: ["rating", "isFavorite"],
@@ -156,7 +156,7 @@ export default function CreateScreen() {
                 title: values.title.trim(),
                 description: values.description.trim(),
                 category: values.category,
-                status: "completed",
+                status: values.status,
     
                 adventure_date: values.date,
                 location_name: values.locationName.trim(),

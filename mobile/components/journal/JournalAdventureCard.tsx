@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { JournalAdventure } from "@/data/journal";
 import type { Adventure } from "@/types/adventure";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 
@@ -34,6 +33,8 @@ export function JournalAdventureCard({adventure, onPress}: JournalAdventureCardP
     const styles = createStyles(colors);
 
     const formattedDate = formatAdventureDate(adventure.adventure_date);
+
+    const isPlanned = adventure.status === "wishlist";
 
     return(
         <Pressable
@@ -82,13 +83,23 @@ export function JournalAdventureCard({adventure, onPress}: JournalAdventureCardP
                         </Text>
                     </View>
 
-                    <View style={styles.rating}>
-                        <Ionicons name="star" size={14} color={colors.warning} />
+                    {isPlanned ? (
+                        <View style={styles.plannedBadge}>
+                            <Ionicons name="calendar-outline" size={14} color={colors.clay} />
 
-                        <Text style={styles.ratingText}>
-                            {adventure.rating}
-                        </Text>
-                    </View>
+                            <Text style={styles.plannedText}>
+                                Planned
+                            </Text>
+                        </View>
+                    ): (
+                        <View style={styles.rating}>
+                            <Ionicons name="star" size={14} color={colors.warning} />
+
+                            <Text style={styles.ratingText}>
+                                {adventure.rating}
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
                 <Text style={styles.title}>{adventure.title}</Text>
@@ -107,7 +118,7 @@ export function JournalAdventureCard({adventure, onPress}: JournalAdventureCardP
 
                 <View style={styles.footer}>
                     <Text style={styles.viewText}>
-                        View memory
+                        {isPlanned ? "View plan" : "View memory"}
                     </Text>
 
                     <Ionicons name="arrow-forward" size={17} color={colors.forest} />
@@ -241,6 +252,20 @@ function createStyles(colors: AppColors) {
             color: colors.forest,
             fontSize: 13,
             fontWeight: "800",
+        },
+        plannedBadge: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.xs,
+            paddingHorizontal: spacing.sm,
+            paddingVertical: spacing.xs,
+            backgroundColor: colors.surfaceMuted,
+            borderRadius: 999
+        },
+        plannedText: {
+            color: colors.clay,
+            fontSize: 11,
+            fontWeight: "800"
         }
     });
 }

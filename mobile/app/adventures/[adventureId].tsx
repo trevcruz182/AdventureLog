@@ -196,6 +196,8 @@ export default function AdventureDetailScreen() {
 
     const hasCoordinates = latitude !== null && longitude !== null;
 
+    const isPlanned = adventure.status === "wishlist";
+
     const isUpdating = favoriteMutation.isPending || deleteMutation.isPending;
 
     return(
@@ -327,6 +329,16 @@ export default function AdventureDetailScreen() {
                             </Text>
                         </View>
                     ): null}
+
+                    {isPlanned ? (
+                        <View style={styles.plannedBadge}>
+                            <Ionicons name="calendar-outline" size={15} color={colors.clay} />
+
+                            <Text style={styles.plannedText}>
+                                Planned adventure
+                            </Text>
+                        </View>
+                    ): null}
                 
                     <Text style={styles.title}>
                         {adventure.title}
@@ -344,20 +356,22 @@ export default function AdventureDetailScreen() {
                         </Text>
                     </View>
 
-                    <View style={styles.ratingRow}>
-                        {Array.from({length: 5}, (_, index) => (
-                            <Ionicons key={index} name={index < adventure.rating ? "star" : "star-outline"} size={19} color={colors.clay} />
-                        ))}
-                    </View>
+                    {!isPlanned ? (
+                        <View style={styles.ratingRow}>
+                            {Array.from({length: 5}, (_, index) => (
+                                <Ionicons key={index} name={index < adventure.rating ? "star" : "star-outline"} size={19} color={colors.clay} />
+                            ))}
+                        </View>
+                    ): null}
 
                     <View style={styles.divider} />
 
                     <Text style={styles.sectionLabel}>
-                        The memory
+                        {isPlanned ? "The plan" : "The memory"}
                     </Text>
 
                     <Text style={styles.description}>
-                        {adventure.description || "No journal note was added for this adventure."}
+                        {adventure.description || (isPlanned ? "No notes were added to this plan." : "No journal note was added for this adventure.")}
                     </Text>
 
                     {hasCoordinates ? (
@@ -573,6 +587,22 @@ function createStyles(colors: AppColors) {
         retryButtonText: {
             color: colors.background,
             fontSize: 13,
+            fontWeight: "800"
+        },
+        plannedBadge: {
+            alignSelf: "flex-start",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.xs,
+            marginTop: spacing.md,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm,
+            backgroundColor: colors.surfaceMuted,
+            borderRadius: 999
+        },
+        plannedText: {
+            color: colors.clay,
+            fontSize: 12,
             fontWeight: "800"
         },
         pressed: {
