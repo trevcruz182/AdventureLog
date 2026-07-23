@@ -7,8 +7,8 @@ import { AchievementRow } from "@/components/profile/AchievementRow";
 import { AppearanceSelector } from "@/components/profile/AppearanceSelector";
 import { ProfileCollectionCard } from "@/components/profile/ProfileCollectionCard";
 import { ProfileStats } from "@/components/profile/ProfileStats";
-// import { SettingsRow } from "@/components/profile/SettingsRow";
-// import { profileAchievements, profileCollections, profileStats } from "@/data/profile";
+import { OfflineDataState } from "@/components/network/OfflineDataState";
+import { useNetworkStatus } from "@/features/network/NetworkProvider";
 import type { AdventureAchievement, ProfileStat } from "@/data/profile";
 import { useAdventures } from "@/features/adventures/useAdventures";
 import { useCollections } from "@/features/collections/useCollections";
@@ -30,7 +30,9 @@ function formatAchievementDate(value: string): string {
 }
 
 export default function ProfileScreen() {
-    const {colors, resolvedAppearance} = useAppTheme();
+  const {colors, resolvedAppearance} = useAppTheme();
+
+  const {isOnline} = useNetworkStatus();
 
 	const {
 		data,
@@ -149,10 +151,10 @@ export default function ProfileScreen() {
               <View style={styles.identity}>
                 <View style={styles.avatarWrapper}>
                   <View style={styles.avatar}>
-					<Text style={styles.avatarText}>
-						{user?.display_name?.trim().charAt(0).toUpperCase() || "A"}
-					</Text>
-				  </View>
+                    <Text style={styles.avatarText}>
+                      {user?.display_name?.trim().charAt(0).toUpperCase() || "A"}
+                    </Text>
+				          </View>
 
                   <View style={styles.levelBadge}>
                     <Ionicons name="compass" size={14} color="#FFFFFF" />
@@ -177,7 +179,13 @@ export default function ProfileScreen() {
               </View>
 
               {/* <ProfileStats stats={profileStats} /> */}
-			  {isLoading ? (
+			  {!isOnline && data === undefined ? (
+				<OfflineDataState 
+					compact
+					title="Statistics aren't cached yet"
+					description="Reconnect and open Profile once to save your adventures"
+				/>
+			  ) : isLoading ? (
 				<View style={styles.profileDataState}>
 					<ActivityIndicator size="small" color={colors.forest} />
 
@@ -244,24 +252,7 @@ export default function ProfileScreen() {
                 </ScrollView>
               </View> */}
 
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <View>
-                    <Text style={styles.sectionEyebrow}>
-                      Milestones
-                    </Text>
-
-                    <Text style={styles.sectionTitle}>
-                      Recent achievements
-                    </Text>
-                  </View>
-
-                  <Pressable>
-                    <Text style={styles.sectionLink}>
-                      See all
-                    </Text>
-                  </Pressable>
-                </View>
+              
 
                 {/* <View style={styles.panel}> */}
         <View style={styles.section}>
@@ -282,7 +273,13 @@ export default function ProfileScreen() {
             </Pressable>
           </View>
 
-          {collectionsQuery.isLoading ? (
+          {!isOnline && collectionsQuery.data === undefined ? (
+			<OfflineDataState
+				compact
+				title="Collections aren't cached yet"
+				description="Reconnect and open Profile or Collections once to save them."
+			/>
+		  ):  collectionsQuery.isLoading ? (
             <View style={styles.collectionLoadingState}>
               <ActivityIndicator size="small" color={colors.forest} />
 
@@ -347,31 +344,48 @@ export default function ProfileScreen() {
           )}
         </View>
 
-				{!isLoading && !isError ? (
-					earnedAchievements.length > 0 ? (
-						<View style={styles.panel}>
-							{earnedAchievements.map((achievement, index) => (
-								<AchievementRow 
-									key={achievement.id}
-									achievement={achievement}
-									// showDivider={index < earnedAchievements.length-1}
-								/>
-							))}
-						</View>
-					) : (
-						<View style={styles.emptyAchievementState}>
-							<Text style={styles.emptyAchievementTitle}>
-								Your first bade is waiting
-							</Text>
+			<View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <View>
+                    <Text style={styles.sectionEyebrow}>
+                      Milestones
+                    </Text>
 
-							<Text style={styles.emptyAchievementDescription}>
-								Log your first adventure to earn First Mark.
-							</Text>
-						</View>
-					)
-				): null}
-                {/* </View> */}
-              </View>
+                    <Text style={styles.sectionTitle}>
+                      Recent achievements
+                    </Text>
+                  </View>
+
+                  <Pressable>
+                    <Text style={styles.sectionLink}>
+                      See all
+                    </Text>
+                  </Pressable>
+				  </View>
+					{!isLoading && !isError ? (
+						earnedAchievements.length > 0 ? (
+							<View style={styles.panel}>
+								{earnedAchievements.map((achievement, index) => (
+									<AchievementRow 
+										key={achievement.id}
+										achievement={achievement}
+										// showDivider={index < earnedAchievements.length-1}
+									/>
+								))}
+							</View>
+						) : (
+							<View style={styles.emptyAchievementState}>
+								<Text style={styles.emptyAchievementTitle}>
+									Your first bade is waiting
+								</Text>
+
+								<Text style={styles.emptyAchievementDescription}>
+									Log your first adventure to earn First Mark.
+								</Text>
+							</View>
+						)
+					): null}
+				</View>
 
               <View style={styles.section}>
                 <Text style={styles.sectionEyebrow}>

@@ -5,6 +5,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAdventure, useDeleteAdventure, useToggleAdventureFavorite } from "@/features/adventures/useAdventures";
 import { ApiError } from "@/lib/api/ApiError";
+import { useNetworkStatus } from "@/features/network/NetworkProvider";
+import { OfflineDataState } from "@/components/network/OfflineDataState";
+import { useOnlineAction } from "@/features/network/useOnlineAction";
 import type { Adventure, AdventureCategory } from "@/types/adventure";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 import { useState } from "react";
@@ -50,6 +53,9 @@ export default function AdventureDetailScreen() {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
     
+    const {isOnline} = useNetworkStatus();
+    const runOnline = useOnlineAction();
+
     const {width: screenWidth} = useWindowDimensions();
 
     const [activePhotoIndex, setActivePhotoIndex] = useState(0);
@@ -116,6 +122,18 @@ export default function AdventureDetailScreen() {
         const nextIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
 
         setActivePhotoIndex(nextIndex);
+    }
+
+    if(!isOnline && adventure === undefined) {
+        return(
+            <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+                <OfflineDataState
+                    title="Adventure isn't cached"
+                    description="Reconnect and open this adventure once to save its details on this device."
+                    onBack={() => router.back()}
+                />
+            </SafeAreaView>
+        );
     }
 
     if(isLoading) {
@@ -198,12 +216,12 @@ export default function AdventureDetailScreen() {
                         accessibilityRole="button"
                         accessibilityLabel="Edit adventure"
                         disabled={isUpdating}
-                        onPress={() => router.push({
+                        onPress={() => runOnline(() => router.push({
                             pathname: "/adventures/edit",
                             params: {
                                 adventureId: adventure.id
                             }
-                        })}
+                        }))}
                         style={({pressed}) => [styles.headerButton, pressed && styles.pressed, isUpdating && styles.disabled]}
                     >
                         <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />

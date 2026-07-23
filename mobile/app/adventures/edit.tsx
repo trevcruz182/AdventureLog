@@ -18,6 +18,7 @@ import type { UploadedImage } from "@/types/media";
 import { CreateAdventureDefaultValues, CreateAdventureFormValues, createAdventureSchema } from "@/features/adventures/createAdventureSchema";
 import { ApiError } from "@/lib/api/ApiError";
 import { deleteUploadedImageRequest, uploadImageRequest } from "@/lib/api/media";
+import { useNetworkStatus } from "@/features/network/NetworkProvider";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 
 const TOTAL_STEPS = 4;
@@ -61,6 +62,8 @@ function roundCoordinate(value: number | null): number | null {
 export default function EditAdventureScreen() {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
+
+    const {isOnline} = useNetworkStatus();
 
     const params = useLocalSearchParams<{adventureId?: string | string[]}>();
 
@@ -160,6 +163,12 @@ export default function EditAdventureScreen() {
     }
 
     async function submitUpdate(values: CreateAdventureFormValues) {
+        if(!isOnline) {
+            Alert.alert("You're offline", "Reconnect before updating this adventure.");
+
+            return;
+        }
+
         if(!adventureId || !adventure) {
             return;
         }

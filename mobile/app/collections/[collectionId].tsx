@@ -4,7 +4,10 @@ import { FlatList, Alert, ActivityIndicator, Pressable, RefreshControl, StyleShe
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { JournalAdventureCard } from "@/components/journal/JournalAdventureCard";
+import { useNetworkStatus } from "@/features/network/NetworkProvider";
+import { OfflineDataState } from "@/components/network/OfflineDataState";
 import { useCollection, useDeleteCollection } from "@/features/collections/useCollections";
+import { useOnlineAction } from "@/features/network/useOnlineAction";
 import type { AdventureCollectionDetail } from "@/types/collection";
 import { ApiError } from "@/lib/api/ApiError";
 import { AppColors, spacing, useAppTheme } from "@/theme";
@@ -12,6 +15,10 @@ import { AppColors, spacing, useAppTheme } from "@/theme";
 export default function CollectionDetailScreen() {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
+
+    const {isOnline} = useNetworkStatus();
+
+    const runOnline = useOnlineAction();
 
     const params = useLocalSearchParams<{collectionId?: string | string[]}>();
 
@@ -27,6 +34,18 @@ export default function CollectionDetailScreen() {
         refetch,
         isRefetching
     } = useCollection(collectionId);
+
+    if(!isOnline && collection === undefined) {
+        return(
+            <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+                <OfflineDataState
+                    title="Collection isn't cached"
+                    description="Reconnect and open this collection once to save its details on this device."
+                    onBack={() => router.back()}
+                />
+            </SafeAreaView>
+        );
+    }
 
     if(isLoading) {
         return(
@@ -204,12 +223,12 @@ export default function CollectionDetailScreen() {
                             <Pressable
                                 accessibilityRole="button"
                                 disabled={isDeleting}
-                                onPress={() => router.push({
+                                onPress={() => runOnline(() => router.push({
                                     pathname: "/collections/edit",
                                     params: {
                                         collectionId: collection.id
                                     }
-                                })}
+                                }))}
                                 style={({pressed}) => [styles.editAction, pressed && styles.pressed]}
                             >
                                 <Ionicons name="pencil-outline" size={17} color={colors.forest} />
@@ -249,12 +268,12 @@ export default function CollectionDetailScreen() {
 
                         <Pressable
                             accessibilityRole="button"
-                            onPress={() => router.push({
+                            onPress={() => runOnline(() => router.push({
                                 pathname: "/collections/manage",
                                 params: {
                                     collectionId: collection.id
                                 }
-                            })}
+                            }))}
                             style={({pressed}) => [styles.manageAction, pressed && styles.pressed]}
                         >
                             <Ionicons name="add" size={18} color={colors.background} />

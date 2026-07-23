@@ -7,7 +7,8 @@ import { AdventureStatCard } from "@/components/home/AdventureStatCard";
 import { CollectionProgressCard } from "@/components/home/CollectionProgressCard";
 import { FeaturedAdventureCard } from "@/components/home/FeaturedAdventureCard";
 import { RecentAdventureCard } from "@/components/home/RecentAdventureCard";
-// import { activeCollection, featuredAdventure, homeStats, recentAdventures } from "@/data/home";
+import { OfflineDataState } from "@/components/network/OfflineDataState";
+import { useNetworkStatus } from "@/features/network/NetworkProvider";
 import { activeCollection } from "@/data/home";
 import { useAdventures } from "@/features/adventures/useAdventures";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -20,6 +21,8 @@ export default function HomeScreen() {
     const styles = createStyles(colors);
 
     const {user} = useAuth();
+
+    const {isOnline} = useNetworkStatus();
 
     const {
         data,
@@ -72,6 +75,14 @@ export default function HomeScreen() {
     }).format(new Date());
 
     const firstName = user?.display_name.trim().split(/\s+/)[0] ?? null;
+
+    if(!isOnline && data === undefined) {
+        return(
+            <SafeAreaView style={styles.safeArea} edges={["top"]}>
+                <OfflineDataState title="Home isn't cached yet" description="Reconnect and open Home once to save your latest adventure overview." />
+            </SafeAreaView>
+        )
+    }
 
     return (
         <SafeAreaView style={styles.safeArea} edges={["top"]}>

@@ -8,6 +8,7 @@ import { Controller, useForm } from "react-hook-form";
 
 import { collectionDefaultValues, collectionIcons, collectionSchema, CollectionFormValues } from "@/features/collections/collectionSchema";
 import { useCreateCollection } from "@/features/collections/useCollections";
+import { useNetworkStatus } from "@/features/network/NetworkProvider";
 import { ApiError } from "@/lib/api/ApiError";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 
@@ -25,6 +26,8 @@ const iconLabels = {
 export default function CreateCollectionScreen() {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
+
+    const {isOnline} = useNetworkStatus();
 
     const createMutation = useCreateCollection();
 
@@ -66,6 +69,12 @@ export default function CreateCollectionScreen() {
     }
 
     async function submitCollection(values: CollectionFormValues) {
+        if(!isOnline) {
+            Alert.alert("You're offline", "Reconnect before creating a collection.");
+
+            return;
+        }
+
         try {
             await createMutation.mutateAsync({
                 title: values.title.trim(),

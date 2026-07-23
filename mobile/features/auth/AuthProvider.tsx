@@ -1,9 +1,12 @@
 import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
+import { useNetworkStatus } from "../network/NetworkProvider";
+import { clearCachedUser, getCachedUser, saveCachedUser } from "@/lib/auth/cachedUserStorage";
+import { clearPersistedQueryCache } from "@/lib/query/persistence";
 import { loginRequest, registerRequest } from "@/lib/api/auth";
 import { getCurrentUserRequest } from "@/lib/api/users";
 import { clearTokens, getRefreshToken, saveTokens, getAccessToken } from "@/lib/auth/tokenStorage";
-// import { refreshRequest } from "@/lib/api/auth";
 import type { AuthUser, LoginPayload, RegisterPayload } from "@/types/auth";
 import { ApiError } from "@/lib/api/ApiError";
 
@@ -20,6 +23,9 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({children}: PropsWithChildren) {
+    const queryClient = useQueryClient();
+
+    const {isOnline, isReady: isNetworkReady} = useNetworkStatus();
     const [user, setUser] = useState<AuthUser | null>(null);
 
     const [isLoading, setIsLoading] = useState(true);
@@ -28,12 +34,21 @@ export function AuthProvider({children}: PropsWithChildren) {
         const currentUser = await getCurrentUserRequest();
 
         setUser(currentUser);
+
+        await saveCachedUser(currentUser);
     }, []);
 
-    const logout = useCallback(async () => {
-        await clearTokens();
+    const clearLocalSession = useCallback(async () => {
+        queryClient.clear();
+
+        await Promise.all([clearTokens(), clearCachedUser(), clearPersistedQueryCache()]);
+
         setUser(null);
-    }, []);
+    }, [queryClient]);
+
+    const logout = useCallback(async () => {
+        await clearLocalSession();
+    }, [clearLocalSession]);
 
     const restoreSession = useCallback(async () => {
         try {
@@ -43,47 +58,69 @@ export function AuthProvider({children}: PropsWithChildren) {
             ]);
 
             if(!accessToken && !refreshToken) {
+                await clearCachedUser();
                 setUser(null);
                 return;
             }
 
-            const currentuser = await getCurrentUserRequest();
+            if(!isOnline) {
+                const cachedUser = await getCachedUser();
 
-            setUser(currentuser);
-        }
-        catch (error) {
-            if(error instanceof ApiError && error.status === 401) {
-                await clearTokens();
+                setUser(cachedUser);
+                return;
             }
 
-            setUser(null);
+            try {
+                const currentuser = await getCurrentUserRequest();
+                setUser(currentuser);
+
+                await saveCachedUser(currentuser);
+            }
+            catch (error) {
+                if(error instanceof ApiError && error.status === 401) {
+                    await clearLocalSession();
+                    return;
+                }
+
+                const cachedUser = await getCachedUser();
+
+                setUser(cachedUser);
+            }
         }
         finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [isOnline, clearLocalSession]);
 
     useEffect(() => {
-        void restoreSession();
-    }, [restoreSession]);
+        if(!isNetworkReady) {
+            return;
+        }
 
-    const login = useCallback(async ({login, password}: LoginPayload) => {
-        const tokens = await loginRequest(login, password);
+        void restoreSession();
+    }, [isNetworkReady, restoreSession]);
+
+    const login = useCallback(async ({login: loginValue, password}: LoginPayload) => {
+        queryClient.clear();
+
+        await clearPersistedQueryCache();
+        
+        const tokens = await loginRequest(loginValue, password);
 
         await saveTokens(tokens);
-
-        // const savedRefreshToken = await getRefreshToken();
 
         try {
             const currentUser = await getCurrentUserRequest();
 
             setUser(currentUser);
+
+            await saveCachedUser(currentUser);
         }
         catch (error) {
-            await clearTokens();
+            await clearLocalSession();
             throw error;
         }
-    }, []);
+    }, [queryClient, clearLocalSession]);
 
     const register = useCallback(async (payload: RegisterPayload) => {
         await registerRequest(payload);

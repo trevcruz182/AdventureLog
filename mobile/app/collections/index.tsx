@@ -5,7 +5,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useCollections } from "@/features/collections/useCollections";
 import { ApiError } from "@/lib/api/ApiError";
+import { useOnlineAction } from "@/features/network/useOnlineAction";
 import type { AdventureCollection } from "@/types/collection";
+import { OfflineDataState } from "@/components/network/OfflineDataState";
+import { useNetworkStatus } from "@/features/network/NetworkProvider";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 
 function CollectionListCard({collection, onPress}: {collection: AdventureCollection; onPress: () => void}) {
@@ -51,6 +54,10 @@ export default function CollectionScreen() {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
+    const {isOnline} = useNetworkStatus();
+
+    const runOnline = useOnlineAction();
+
     const {
         data: collections,
         isLoading,
@@ -59,6 +66,18 @@ export default function CollectionScreen() {
         refetch,
         isRefetching
     } = useCollections();
+
+    if(!isOnline && collections === undefined) {
+        return(
+            <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+                <OfflineDataState
+                    title="Collections aren't cached yet"
+                    description="Reconnect and open Collections once to save them on this device."
+                    onBack={() => router.back()}
+                />
+            </SafeAreaView>
+        );
+    }
 
     if(isLoading) {
         return(
@@ -136,7 +155,7 @@ export default function CollectionScreen() {
                 <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Create collection"
-                    onPress={() => router.push("/collections/create")}
+                    onPress={() => runOnline(() => router.push("/collections/create"))}
                     style={({pressed}) => [styles.createButton, pressed && styles.pressed]}
                 >
                     <Ionicons name="add" size={23} color={colors.background} />
@@ -190,7 +209,7 @@ export default function CollectionScreen() {
 
                         <Pressable
                             accessibilityRole="button"
-                            onPress={() => router.push("/collections/create")}
+                            onPress={() => runOnline(() => router.push("/collections/create"))}
                             style={({pressed}) => [styles.emptyAction, pressed && styles.pressed]}
                         >
                             <Ionicons name="add" size={18} color={colors.background} />

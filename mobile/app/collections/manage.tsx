@@ -10,6 +10,8 @@ import { ApiError } from "@/lib/api/ApiError";
 import type { Adventure } from "@/types/adventure";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 import { useMemo, useState } from "react";
+import { useNetworkStatus } from "@/features/network/NetworkProvider";
+import { OfflineDataState } from "@/components/network/OfflineDataState";
 import { AdventureCollectionDetail } from "@/types/collection";
 
 const categoryIcons: Record<Adventure["category"], React.ComponentProps<typeof Ionicons>["name"]> = {
@@ -86,6 +88,8 @@ export default function ManageCollectionScreen() {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
+    const {isOnline} = useNetworkStatus();
+
     const [searchQuery, setSearchQuery] = useState("");
 
     const params = useLocalSearchParams<{collectionId?: string | string[]}>();
@@ -117,6 +121,12 @@ export default function ManageCollectionScreen() {
     }, [adventuresQuery.data, searchQuery]);
 
     async function toggleAdventure(adventure: Adventure) {
+        if(!isOnline) {
+            Alert.alert("You're offline", "Reconnect before changing this collection.");
+
+            return;
+        }
+
         if(!collectionId) {
             return;
         }
@@ -153,6 +163,18 @@ export default function ManageCollectionScreen() {
     const isRefetching = collectionQuery.isRefetching || adventuresQuery.isRefetching;
 
     const mutationAdventureId = addMutation.variables?.adventureId ?? removeMutation.variables?.adventureId;
+
+    if(!isOnline && (collectionQuery.data === undefined || adventuresQuery.data === undefined)) {
+        return(
+            <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+                <OfflineDataState 
+                    title="Collection management isn't available offline"
+                    description="Reconnect to load all available adventures and change collection membership."
+                    onBack={() => router.back()}
+                />
+            </SafeAreaView>
+        )
+    }
 
     if(isLoading) {
         return(

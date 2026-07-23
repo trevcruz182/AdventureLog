@@ -6,7 +6,9 @@ import { router } from "expo-router";
 
 import { JournalAdventureCard } from "@/components/journal/JournalAdventureCard";
 import { AdventureCategory } from "@/data/home";
-import { JournalAdventure, journalAdventures } from "@/data/journal";
+// import { JournalAdventure, journalAdventures } from "@/data/journal";
+import { useNetworkStatus } from "@/features/network/NetworkProvider";
+import { OfflineDataState } from "@/components/network/OfflineDataState";
 import { useAdventures } from "@/features/adventures/useAdventures";
 import { ApiError } from "@/lib/api/ApiError";
 import type { Adventure } from "@/types/adventure";
@@ -61,6 +63,8 @@ export default function JournalScreen() {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
+    const {isOnline} = useNetworkStatus();
+
     const {
         data,
         isLoading,
@@ -114,6 +118,17 @@ export default function JournalScreen() {
 
     const resultCount = sections.reduce((total, section) => total + section.data.length, 0);
     const hasActiveFilters = searchQuery.trim().length > 0 || selectedCategory !== "all";
+
+    if(!isOnline && data === undefined) {
+        return(
+            <SafeAreaView style={styles.safeArea} edges={["top"]}>
+                <OfflineDataState
+                    title="Journal isn't cached yet"
+                    description="Reconnect and open your Journal once to make its memories available offline."
+                />
+            </SafeAreaView>
+        )
+    }
 
     if(isLoading) {
         return(

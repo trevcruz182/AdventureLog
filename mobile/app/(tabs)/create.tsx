@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {useForm, useWatch} from "react-hook-form";
 import { router } from "expo-router";
 
+import { useNetworkStatus } from "@/features/network/NetworkProvider";
 import { useCreateAdventure } from "@/features/adventures/useAdventures";
 import { ApiError } from "@/lib/api/ApiError";
 import type { AdventureCreatePayload } from "@/types/adventure";
@@ -52,6 +53,8 @@ async function cleanupUploadedImages(publidIds: string[]): Promise<void> {
 export default function CreateScreen() {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
+
+    const {isOnline} = useNetworkStatus();
 
     const [currentStep, setCurrentStep] = useState(1);
     const [isSaved, setIsSaved] = useState(false);
@@ -118,6 +121,12 @@ export default function CreateScreen() {
     }
 
     async function submitAdventure(values: CreateAdventureFormValues) {
+        if(!isOnline) {
+            Alert.alert("You're offline", "Reconnect before saving an adventure.");
+
+            return;
+        }
+
         const localPhotos = values.photos.map((photo) => typeof photo === "string" ? {
             uri: photo,
             fileName: null,

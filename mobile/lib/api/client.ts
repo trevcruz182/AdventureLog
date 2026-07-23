@@ -1,8 +1,9 @@
+import { onlineManager } from "@tanstack/react-query";
+
 import { ApiError } from "./ApiError";
 import { API_URL } from "./config";
 import { refreshRequest } from "./auth";
 import { getApiErrorMessage } from "./errorMessage";
-
 import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "../auth/tokenStorage";
 
 type ApiRequestOptions = RequestInit & {
@@ -68,6 +69,10 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
         headers,
         ...requestOptions
     } = options;
+
+    if(!onlineManager.isOnline()) {
+        throw new ApiError("You're offline. Reconnect to make changes.", 0, null);
+    }
 
     const requestHeaders = new Headers(headers);
 

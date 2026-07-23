@@ -9,6 +9,7 @@ import { useEffect } from "react";
 
 import { collectionDefaultValues, collectionIcons, collectionSchema, CollectionFormValues } from "@/features/collections/collectionSchema";
 import { useCollection, useUpdateCollection} from "@/features/collections/useCollections";
+import { useNetworkStatus } from "@/features/network/NetworkProvider";
 import { ApiError } from "@/lib/api/ApiError";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 
@@ -26,6 +27,8 @@ const iconLabels = {
 export default function EditCollectionScreen() {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
+
+    const {isOnline} = useNetworkStatus();
 
     const params = useLocalSearchParams<{collectionId?: string | string[]}>();
 
@@ -89,6 +92,12 @@ export default function EditCollectionScreen() {
     }
 
     async function submitCollectionUpdate(values: CollectionFormValues) {
+        if(!isOnline) {
+            Alert.alert("You're offline", "Reconnect before updating this collection.");
+
+            return;
+        }
+
         if(!collectionId) {
             return;
         }

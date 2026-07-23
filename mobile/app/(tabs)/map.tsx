@@ -17,6 +17,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AdventureMapMarker } from "@/components/map/AdventureMapMarker";
 import { MapAdventurePreview } from "@/components/map/MapAdventurePreview";
+import { useNetworkStatus } from "@/features/network/NetworkProvider";
+import { OfflineDataState } from "@/components/network/OfflineDataState";
 import { useAdventures } from "@/features/adventures/useAdventures";
 import { getMappedAdventures, MappedAdventure } from "@/features/adventures/adventureCoordinates";
 import { ApiError } from "@/lib/api/ApiError";
@@ -72,6 +74,8 @@ const mapFilters: Array<{
 export default function MapScreen() {
     const {colors, isDark} = useAppTheme();
     const styles = createStyles(colors);
+
+    const {isOnline} = useNetworkStatus();
 
     const {
         data,
@@ -179,6 +183,14 @@ export default function MapScreen() {
 
     function toggleMapType() {
         setMapType((currentType) => currentType === "standard" ? "hybrid" : "standard");
+    }
+
+    if(!isOnline && data === undefined) {
+        return(
+            <SafeAreaView style={styles.safeArea} edges={["top"]}>
+                <OfflineDataState title="Map isn't cached yet" description="Reconnect and open Map once to save your adventure locations on this device." />
+            </SafeAreaView>
+        );
     }
 
     return(
