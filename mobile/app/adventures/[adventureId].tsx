@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, NativeScrollEvent, NativeSyntheticEvent, useWindowDimensions, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useAdventure, useDeleteAdventure, useToggleAdventureFavorite } from "@/features/adventures/useAdventures";
+import { useAdventure, useDeleteAdventure, useToggleAdventureFavorite, useUpdateAdventure } from "@/features/adventures/useAdventures";
 import { ApiError } from "@/lib/api/ApiError";
 import { useNetworkStatus } from "@/features/network/NetworkProvider";
 import { OfflineDataState } from "@/components/network/OfflineDataState";
@@ -37,6 +37,16 @@ function formatAdventureDate(value: string): string {
         day: "numeric",
         year: "numeric"
     }).format(new Date(year, month - 1, day));
+}
+
+function getTodayDateValue(): string {
+    const today = new Date();
+
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`
 }
 
 function getCoordinate(value: string | number | null): number | null {
@@ -77,6 +87,8 @@ export default function AdventureDetailScreen() {
 
     const favoriteMutation = useToggleAdventureFavorite();
 
+    const updateMutation = useUpdateAdventure();
+
     const deleteMutation = useDeleteAdventure();
 
     function confirmDelete(currentAdventure: Adventure) {
@@ -115,6 +127,55 @@ export default function AdventureDetailScreen() {
             const message = mutationError instanceof ApiError ? mutationError.message : "AdventureLog could not update this adventure.";
 
             Alert.alert("Favorite not updated", message);
+        }
+    }
+
+    function confirmCompletion(currentAdventure: Adventure) {
+        Alert.alert("Mark as completed?", "This will move the adventure from your plans into your completed memories.", [
+            {
+                text: "Cancel",
+                style: "cancel"
+            },
+            {
+                text: "Mark completed",
+                onPress: () => {
+                    runOnline(() => {
+                        void completeAdventure(currentAdventure)
+                    });
+                }
+            }
+        ]);
+    }
+
+    async function completeAdventure(currentAdventure: Adventure) {
+        try {
+            await updateMutation.mutateAsync({
+                adventureId: currentAdventure.id,
+                payload: {
+                    status: "completed"
+                }
+            });
+
+            Alert.alert("Adventure completed", "Your plan is now a completed adventure. You can edit it to add photos, notes, and your final rating.", [
+                {
+                    text: "Not now",
+                    style: "cancel"
+                },
+                {
+                    text: "Add details",
+                    onPress: () => router.push({
+                        pathname: "/adventures/edit",
+                        params: {
+                            adventureId: currentAdventure.id
+                        }
+                    })
+                }
+            ]);
+        }
+        catch(mutationError) {
+            const message = mutationError instanceof ApiError ? mutationError.message : "AdventureLog could not complete this adventure.";
+
+            Alert.alert("Adventure not completed", message);
         }
     }
 
@@ -198,7 +259,9 @@ export default function AdventureDetailScreen() {
 
     const isPlanned = adventure.status === "wishlist";
 
-    const isUpdating = favoriteMutation.isPending || deleteMutation.isPending;
+    const isPlannedForFuture = isPlanned && adventure.adventure_date > getTodayDateValue();
+
+    const isUpdating = favoriteMutation.isPending || deleteMutation.isPending || updateMutation.isPending;
 
     return(
         <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -355,6 +418,56 @@ export default function AdventureDetailScreen() {
                             {adventure.location_name}
                         </Text>
                     </View>
+
+                    {isPlanned ? (
+                        <View style={styles.completionCard}>
+                            <View style={styles.completionIcon}>
+                                <Ionicons name={isPlannedForFuture ? "time-outline" : "checkmark-circle-outline"} size={24} color={isPlannedForFuture ? colors.clay : colors.forest} />
+                            </View>
+
+                            <View style={styles.completionContent}>
+                                <Text style={styles.completionTitle}>
+                                    {isPlannedForFuture ? "Still on the horizone" : "Did you complete this adventure?"}
+                                </Text>
+
+                                <Text style={styles.completionDescription}>
+                                    {isPlannedForFuture ? "The planned date is still in the future. Edit the plan if the adventure happened early." : "Move this plan into your completed memories, then add your photos and final notes."}
+                                </Text>
+
+                                <Pressable
+                                    accessibilityRole="button"
+                                    disabled={isUpdating}
+                                    onPress={() => {
+                                        if(isPlannedForFuture) {
+                                            runOnline(() => router.push({
+                                                pathname: "/adventures/edit",
+                                                params: {
+                                                    adventureId: adventure.id
+                                                }
+                                            }));
+                                            
+                                            return;
+                                        }
+
+                                        confirmCompletion(adventure);
+                                    }}
+                                    style={({pressed}) => [styles.completionButton, pressed && !isUpdating && styles.pressed, isUpdating && styles.disabled]}
+                                >
+                                    {updateMutation.isPending ? (
+                                        <ActivityIndicator size="small" color={colors.background} />
+                                    ) : (
+                                        <>
+                                            <Ionicons name={isPlannedForFuture ? "pencil-outline" : "checkmark"} size={17} color={colors.background} />
+
+                                            <Text style={styles.completionButtonText}>
+                                                {isPlannedForFuture ? "Edit planned date" : "Mark as completed"}
+                                            </Text>
+                                        </>
+                                    )}
+                                </Pressable>
+                            </View>
+                        </View>
+                    ): null}
 
                     {!isPlanned ? (
                         <View style={styles.ratingRow}>
@@ -605,7 +718,57 @@ function createStyles(colors: AppColors) {
             fontSize: 12,
             fontWeight: "800"
         },
-        pressed: {
+        completionCard: {
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: spacing.md,
+            marginTop: spacing.xl,
+            padding: spacing.lg,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 22,
+        },
+        completionIcon: {
+            width: 46,
+            height: 46,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: colors.surfaceMuted,
+            borderRadius: 17
+        },
+        completionContent: {
+            flex: 1
+        },
+        completionTitle: {
+            color: colors.textPrimary,
+            fontSize: 15,
+            fontWeight: "800"
+        },
+        completionDescription: {
+            marginTop: spacing.xs,
+            color: colors.textSecondary,
+            fontSize: 13,
+            lineHeight: 19
+        },
+        completionButton: {
+            alignSelf: "flex-start",
+            minHeight: 42,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: spacing.sm,
+            marginTop: spacing.md,
+            paddingHorizontal: spacing.lg,
+            backgroundColor: colors.forest,
+            borderRadius: 999
+        },
+        completionButtonText: {
+            color: colors.background,
+            fontSize: 13,
+            fontWeight: "800"
+        }
+        ,pressed: {
             opacity: 0.75
         },
         disabled: {
