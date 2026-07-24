@@ -5,6 +5,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAdventure, useDeleteAdventure, useToggleAdventureFavorite, useUpdateAdventure } from "@/features/adventures/useAdventures";
 import { ApiError } from "@/lib/api/ApiError";
+import { PlannedAdventureReminderCard } from "@/components/adventures/PlannedAdventureReminderCard";
+import { cancelAdventureReminder } from "@/lib/notifications/adventureReminders";
 import { useNetworkStatus } from "@/features/network/NetworkProvider";
 import { OfflineDataState } from "@/components/network/OfflineDataState";
 import { useOnlineAction } from "@/features/network/useOnlineAction";
@@ -104,6 +106,13 @@ export default function AdventureDetailScreen() {
                     try {
                         await deleteMutation.mutateAsync(currentAdventure.id);
 
+                        try {
+                            await cancelAdventureReminder(currentAdventure.id);
+                        }
+                        catch (reminderError) {
+                            console.warn("Unable to cancel deleted adventure reminder:", reminderError);
+                        }
+
                         router.back();
                     }
                     catch (mutationError) {
@@ -155,6 +164,13 @@ export default function AdventureDetailScreen() {
                     status: "completed"
                 }
             });
+
+            try {
+                await cancelAdventureReminder(currentAdventure.id);
+            }
+            catch (reminderError) {
+                console.warn("Unable to cancel completed adventure reminder:", reminderError);
+            }
 
             Alert.alert("Adventure completed", "Your plan is now a completed adventure. You can edit it to add photos, notes, and your final rating.", [
                 {
@@ -467,6 +483,14 @@ export default function AdventureDetailScreen() {
                                 </Pressable>
                             </View>
                         </View>
+                    ): null}
+
+                    {isPlannedForFuture ? (
+                        <PlannedAdventureReminderCard 
+                            adventureId={adventure.id}
+                            adventureTitle={adventure.title}
+                            adventureDate={adventure.adventure_date}
+                        />
                     ): null}
 
                     {!isPlanned ? (

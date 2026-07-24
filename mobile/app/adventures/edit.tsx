@@ -9,6 +9,7 @@ import { useForm, useWatch } from "react-hook-form";
 
 import { useAdventure, useUpdateAdventure } from "@/features/adventures/useAdventures";
 import { AdventureBasicsStep } from "@/components/create/AdventureBasicsStep";
+import { cancelAdventureReminder } from "@/lib/notifications/adventureReminders";
 import { AdventurePlaceStep } from "@/components/create/AdventurePlaceStep";
 import { AdventureReviewStep } from "@/components/create/AdventureReviewStep";
 import { AdventureStepIndicator } from "@/components/create/AdventureStepIndicator";
@@ -244,6 +245,17 @@ export default function EditAdventureScreen() {
                     photos: finalPhotos,
                 }
             });
+
+            const reminderBecameStale = values.status !== "wishlist" || values.date !== adventure.adventure_date;
+
+            if(reminderBecameStale) {
+                try {
+                    await cancelAdventureReminder(adventureId);
+                }
+                catch (reminderError) {
+                    console.warn("Unable to cancel stale adventure reminder:", reminderError);
+                }
+            }
 
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 

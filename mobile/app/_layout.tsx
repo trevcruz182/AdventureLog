@@ -5,14 +5,18 @@ import { QueryProvider } from "@/lib/query/QueryProvider";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { SessionLoadingScreen } from "@/components/auth/SessionLoadingScreen";
+import { useNotificationNavigation } from "@/lib/notifications/useNotificationNavigation";
 import { AuthProvider, useAuth } from "@/features/auth/AuthProvider";
 import { NetworkProvider } from "@/features/network/NetworkProvider";
 import { OfflineBanner } from "@/components/network/OfflineBanner";
 import { ThemeProvider, useAppTheme } from "@/theme";
+import "@/lib/notifications/adventureReminders";
 
 function RootNavigator() {
   const {colors, isDark} = useAppTheme();
   const {isAuthenticated, isLoading} = useAuth();
+
+  useNotificationNavigation(!isLoading && isAuthenticated);
 
   if(isLoading) {
     return <SessionLoadingScreen />;
