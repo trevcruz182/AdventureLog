@@ -23,6 +23,8 @@ export function AdventureMapMarker({adventure, isSelected, onPress}: AdventureMa
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
+    const isPlanned = adventure.status === "wishlist";
+
     return(
         <Marker
             coordinate={{
@@ -34,11 +36,11 @@ export function AdventureMapMarker({adventure, isSelected, onPress}: AdventureMa
             onPress={onPress}
             tracksViewChanges={isSelected}
         >
-            <View style={[styles.marker, isSelected && styles.markerSelected]}>
-                <Ionicons name={categoryIcons[adventure.category]} size={isSelected ? 20 : 17} color={isSelected ? colors.background : "#FFFFFF"} />
+            <View style={[styles.marker, isPlanned && styles.markerPlanned, isSelected && styles.markerSelected]}>
+                <Ionicons name={categoryIcons[adventure.category]} size={isSelected ? 20 : 17} color={isSelected ? colors.background : isPlanned ? colors.clay : "#FFFFFF"} />
             </View>
 
-            <View style={[styles.pointer, isSelected && styles.pointerSelected]} />
+            <View style={[styles.pointer, isPlanned && styles.pointerPlanned, isSelected && styles.pointerSelected]} />
         </Marker>
     );
 }
@@ -69,6 +71,13 @@ function createStyles(colors: AppColors) {
             backgroundColor: colors.clay,
             borderColor: colors.surface,
             borderRadius: 23,
+        },
+        markerPlanned: {
+            backgroundColor: colors.surface,
+            borderColor: colors.clay
+        },
+        pointerPlanned: {
+            backgroundColor: colors.clay
         },
         pointer: {
             width: 10,

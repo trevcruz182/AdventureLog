@@ -22,6 +22,8 @@ export function MapAdventurePreview({adventure, onClose, onPress}: MapAdventureP
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
 
+    const isPlanned = adventure.status === "wishlist";
+
     return(
         <Pressable 
             accessibilityRole="button"
@@ -43,9 +45,21 @@ export function MapAdventurePreview({adventure, onClose, onPress}: MapAdventureP
 
                 <View style={styles.details}>
                     <View style={styles.topRow}>
-                        <Text style={styles.category}>
-                            {categoryLabels[adventure.category]}
-                        </Text>
+                        <View style={styles.previewLabels}>
+                            <Text style={styles.category}>
+                                {categoryLabels[adventure.category]}
+                            </Text>
+
+                            {isPlanned ? (
+                                <View style={styles.plannedBadge}>
+                                    <Ionicons name="calendar-outline" size={12} color={colors.clay} />
+
+                                    <Text style={styles.plannedText}>
+                                        Planned
+                                    </Text>
+                                </View>
+                            ): null}
+                        </View>
 
                         <Pressable
                             accessibilityRole="button"
@@ -86,7 +100,7 @@ export function MapAdventurePreview({adventure, onClose, onPress}: MapAdventureP
                 }}
             >
                 <Text style={styles.openButtonText}>
-                    Open memory
+                    {isPlanned ? "Open plan" : "Open memory"}
                 </Text>
 
                 <Ionicons name="arrow-forward" size={17} color={colors.background} />
@@ -196,6 +210,25 @@ function createStyles(colors: AppColors) {
         openButtonText: {
             color: colors.background,
             fontSize: 14,
+            fontWeight: "800"
+        },
+        previewLabels: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.sm,
+        },
+        plannedBadge: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 3,
+            paddingHorizontal: spacing.sm,
+            paddingVertical: 3,
+            backgroundColor: colors.surfaceMuted,
+            borderRadius: 999
+        },
+        plannedText: {
+            color: colors.clay,
+            fontSize: 10,
             fontWeight: "800"
         },
         pressed: {

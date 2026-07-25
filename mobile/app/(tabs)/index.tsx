@@ -5,6 +5,7 @@ import { router } from "expo-router";
 
 import { AdventureStatCard } from "@/components/home/AdventureStatCard";
 import { CollectionProgressCard } from "@/components/home/CollectionProgressCard";
+import { UpcomingAdventureCard } from "@/components/home/UpcomingAdventureCard";
 import { FeaturedAdventureCard } from "@/components/home/FeaturedAdventureCard";
 import { RecentAdventureCard } from "@/components/home/RecentAdventureCard";
 import { OfflineDataState } from "@/components/network/OfflineDataState";
@@ -14,7 +15,19 @@ import { useAdventures } from "@/features/adventures/useAdventures";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { ApiError } from "@/lib/api/ApiError";
 import { AppColors, spacing, useAppTheme } from "@/theme";
-import { Adventure } from "@/types/adventure";
+import type { Adventure } from "@/types/adventure";
+
+function getTodayDateValue(): string {
+    const today = new Date();
+
+    const year = today.getFullYear();
+
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+
+    const day = String(today.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
 
 export default function HomeScreen() {
     const {colors} = useAppTheme();
@@ -35,13 +48,19 @@ export default function HomeScreen() {
 
     const adventures: Adventure[] = data?.items ?? [];
 
+    const completedAdventures = adventures.filter((adventure) => adventure.status === "completed");
+
+    const plannedAdventures = adventures.filter((adventure) => adventure.status === "wishlist" && adventure.adventure_date >= getTodayDateValue()).sort((first, second) => first.adventure_date.localeCompare(second.adventure_date));
+
+    const upcomingAdventure = plannedAdventures[0] ?? null;
+
     const currentYear = new Date().getFullYear();
 
-    const currentYearAdventures = adventures.filter((adventure) => adventure.adventure_date.startsWith(String(currentYear)));
+    const currentYearAdventures = completedAdventures.filter((adventure) => adventure.adventure_date.startsWith(String(currentYear)));
 
-    const featuredAdventure = adventures.find((adventure) => adventure.photos.length > 0) ?? null;
+    const featuredAdventure = completedAdventures.find((adventure) => adventure.photos.length > 0) ?? null;
 
-    const recentAdventures = adventures.slice(0, 3);
+    const recentAdventures = completedAdventures.slice(0, 3);
 
     const uniquePlaces = new Set(currentYearAdventures.map((adventure) => adventure.location_name.trim().toLowerCase())).size;
 
@@ -168,14 +187,48 @@ export default function HomeScreen() {
                         <Ionicons name="camera-outline" size={30} color={colors.forest} />
 
                         <Text style={styles.featuredStateTitle}>
-                            Your next story starts here
+                            Your first memory is waiting
                         </Text>
 
                         <Text style={styles.featuredStateText}>
-                            Log an adventure with a photo to feature it on your Home screen.
+                            Complete an adventure with a photo to feature it on your Home screen.
                         </Text>
                     </Pressable>
                 )}
+
+                {upcomingAdventure ? (
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeading}>
+                            <View>
+                                <Text style={styles.sectionEyebrow}>
+                                    On the horizon
+                                </Text>
+
+                                <Text style={styles.sectionTitle}>
+                                    Your next adventure
+                                </Text>
+                            </View>
+
+                            <Pressable
+                                onPress={() => router.navigate("/(tabs)/journal")}
+                            >
+                                <Text style={styles.linkText}>
+                                    View plans
+                                </Text>
+                            </Pressable>
+                        </View>
+
+                        <UpcomingAdventureCard 
+                            adventure={upcomingAdventure}
+                            onPress={() => router.push({
+                                pathname: "/adventures/[adventureId]",
+                                params: {
+                                    adventureId: upcomingAdventure.id
+                                }
+                            })}
+                        />
+                    </View>
+                ): null}
 
                 <View style={styles.section}>
                     <View style={styles.sectionHeading}>
@@ -245,11 +298,11 @@ export default function HomeScreen() {
                         style={styles.recentEmptyState}
                     >
                         <Text style={styles.recentEmptyTitle}>
-                            No adventures yet
+                            No completed adventures yet
                         </Text>
 
                         <Text style={styles.recentEmptyText}>
-                            Log your first adventure to begin your timeline.
+                            Complete an adventure to begin your memory timeline.
                         </Text>
                     </Pressable>
                 ): null}

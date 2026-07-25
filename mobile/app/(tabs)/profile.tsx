@@ -14,10 +14,10 @@ import { useAdventures } from "@/features/adventures/useAdventures";
 import { useCollections } from "@/features/collections/useCollections";
 import { ApiError } from "@/lib/api/ApiError";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { Adventure } from "@/types/adventure";
+import type { Adventure } from "@/types/adventure";
 
 import { AppColors, spacing, useAppTheme } from "@/theme";
-import { AdventureCollection } from "@/types/collection";
+import type { AdventureCollection } from "@/types/collection";
 
 function formatAchievementDate(value: string): string {
   	const [year, month, day] = value.split("-").map(Number);
@@ -49,15 +49,17 @@ export default function ProfileScreen() {
 
 	const adventures: Adventure[] = data?.items ?? [];
 
-	const uniquePlaces = new Set(adventures.map((adventure) => adventure.location_name.trim().toLowerCase()).filter(Boolean)).size;
+  const completedAdventures = adventures.filter((adventure) => adventure.status === "completed");
 
-	const favoriteCount = adventures.filter((adventure) => adventure.is_favorite).length;
+	const uniquePlaces = new Set(completedAdventures.map((adventure) => adventure.location_name.trim().toLowerCase()).filter(Boolean)).size;
+
+	const favoriteCount = completedAdventures.filter((adventure) => adventure.is_favorite).length;
 
 	const realProfileStats: ProfileStat[] = [
 		{
 			id: "adventures",
 			label: "Adventures",
-			value: String(data?.total ?? adventures.length)
+			value: String(completedAdventures.length)
 		},
 		{
 			id: "places",
@@ -71,7 +73,7 @@ export default function ProfileScreen() {
 		},
 	]
 
-	const adventuresOldestFirst = [...adventures].sort((first, second) => first.adventure_date.localeCompare(second.adventure_date));
+	const adventuresOldestFirst = [...completedAdventures].sort((first, second) => first.adventure_date.localeCompare(second.adventure_date));
 
 	const adventuresWithPhotos = adventuresOldestFirst.filter((adventure) => adventure.photos.length > 0);
 
@@ -376,11 +378,11 @@ export default function ProfileScreen() {
 						) : (
 							<View style={styles.emptyAchievementState}>
 								<Text style={styles.emptyAchievementTitle}>
-									Your first bade is waiting
+									Your first badge is waiting
 								</Text>
 
 								<Text style={styles.emptyAchievementDescription}>
-									Log your first adventure to earn First Mark.
+									Complete your first adventure to earn First Mark.
 								</Text>
 							</View>
 						)

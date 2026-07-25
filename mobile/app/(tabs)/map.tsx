@@ -23,9 +23,11 @@ import { useAdventures } from "@/features/adventures/useAdventures";
 import { getMappedAdventures, MappedAdventure } from "@/features/adventures/adventureCoordinates";
 import { ApiError } from "@/lib/api/ApiError";
 import { AppColors, spacing, useAppTheme } from "@/theme";
-import type { AdventureCategory } from "@/types/adventure";
+import type { AdventureCategory, AdventureStatus } from "@/types/adventure";
 
 type MapFilter = "all" | AdventureCategory;
+
+type MapStatusFilter = "all" | AdventureStatus;
 
 const DEFAULT_REGION: Region = {
     latitude: 41.37,
@@ -71,6 +73,28 @@ const mapFilters: Array<{
     },
 ]
 
+const mapStatusFilters: Array<{
+    label: string;
+    value: MapStatusFilter;
+    icon: React.ComponentProps<typeof Ionicons>["name"];
+}> = [
+    {
+        label: "Completed",
+        value: "completed",
+        icon: "checkmark-circle-outline",
+    },
+    {
+        label: "Planned",
+        value: "wishlist",
+        icon: "calendar-outline",
+    },
+    {
+        label: "All",
+        value: "all",
+        icon: "apps-outline",
+    },
+]
+
 export default function MapScreen() {
     const {colors, isDark} = useAppTheme();
     const styles = createStyles(colors);
@@ -90,45 +114,50 @@ export default function MapScreen() {
 
     const mapRef = useRef<MapView | null>(null);
 
-    const hasFitMarkersRef = useRef(false);
-
-    useEffect(() => {
-        if(hasFitMarkersRef.current || mappedAdventures.length === 0) {
-            return;
-        }
-
-        const timeout = setTimeout(() => {
-            mapRef.current?.fitToCoordinates(mappedAdventures.map((adventure) => ({
-                latitude: adventure.latitudeNumber,
-                longitude: adventure.longitudeNumber
-            })
-            ), {
-                edgePadding: {
-                    top: 120,
-                    right: 60,
-                    bottom: 220,
-                    left: 60
-                },
-                animated: true,
-            });
-
-            hasFitMarkersRef.current = true;
-        }, 300);
-
-        return () => clearTimeout(timeout);
-    }, [mappedAdventures]);
-
     const [selectedAdventureId, setSelectedAdventureId] = useState<string | null>(null);
 
-    const selectedAdventure = mappedAdventures.find((adventure) => adventure.id === selectedAdventureId) ?? null;
-
     const [selectedFilter, setSelectedFilter] = useState<MapFilter>("all");
+
+    const [selectedStatus, setSelectedStatus] = useState<MapStatusFilter>("completed");
 
     const [mapType, setMapType] = useState<MapType>("standard");
 
     const [isLocating, setIsLocating] = useState(false);
 
-    const visibleAdventures = useMemo(() => mappedAdventures.filter((adventure) => selectedFilter === "all" || adventure.category === selectedFilter), [mappedAdventures, selectedFilter]);
+    const visibleAdventures = useMemo(() => mappedAdventures.filter((adventure) => {
+        const matchesCategory = selectedFilter === "all" || adventure.category === selectedFilter;
+        
+        const matchesStatus = selectedStatus === "all" || adventure.status === selectedStatus;
+
+        return matchesCategory && matchesStatus;
+    }), [mappedAdventures, selectedFilter, selectedStatus]);
+
+    const selectedAdventure = mappedAdventures.find((adventure) => adventure.id === selectedAdventureId) ?? null;
+
+    useEffect(() => {
+        if(visibleAdventures.length === 0) {
+            return;
+        }
+
+        const timeout = setTimeout(() => {
+            mapRef.current?.fitToCoordinates(visibleAdventures.map((adventure) => ({
+                latitude: adventure.latitudeNumber,
+                longitude: adventure.longitudeNumber
+            })),
+            {
+                edgePadding: {
+                    top: 180,
+                    right: 60,
+                    bottom: 220,
+                    left: 60
+                },
+                animated: true,
+            }
+            );
+        }, 300);
+
+        return () => clearTimeout(timeout);
+    }, [visibleAdventures]);
 
     useEffect(() => {
         if(!selectedAdventureId) {
@@ -238,6 +267,32 @@ export default function MapScreen() {
                         </Pressable>
                     </View>
 
+                    <View style={styles.statusFilters}>
+                        {mapStatusFilters.map((filter) => {
+                            const isSelected = selectedStatus === filter.value;
+
+                            return(
+                                <Pressable
+                                    key={filter.value}
+                                    accessibilityRole="button"
+                                    accessibilityState={{selected: isSelected}}
+                                    onPress={() => {
+                                        setSelectedStatus(filter.value);
+
+                                        setSelectedAdventureId(null);
+                                    }}
+                                    style={({pressed}) => [styles.statusFilter, isSelected && styles.statusFilterSelected, pressed && styles.pressed]}
+                                >
+                                    <Ionicons name={filter.icon} size={15} color={isSelected ? colors.background : colors.textPrimary} />
+
+                                    <Text style={[styles.statusFilterText, isSelected && styles.statusFilterTextSelected]}>
+                                        {filter.label}
+                                    </Text>
+                                </Pressable>
+                            );
+                        })}
+                    </View>
+
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -313,7 +368,7 @@ export default function MapScreen() {
                         <View style={styles.noLocationsContent}>
                             <Text style={styles.noLocationsTitle}>Your map is waiting</Text>
                             <Text style={styles.noLocationsDescription}>
-                                Log your first adventure to place a memory on the map.
+                                Log or plan your first adventure to place it on the map.
                             </Text>
                         </View>
                         <Ionicons name="arrow-forward" size={20} color={colors.forest} />
@@ -331,6 +386,22 @@ export default function MapScreen() {
                         </View>
                     </View>
                 ) : null}
+
+                {!isLoading && !isError && mappedAdventures.length > 0 && visibleAdventures.length === 0 ? (
+                    <View style={styles.noLocationsCard}>
+                        <Ionicons name="filter-outline" size={24} color={colors.clay} />
+
+                        <View style={styles.noLocationsContent}>
+                            <Text style={styles.noLocationsTitle}>
+                                No matching places
+                            </Text>
+
+                            <Text style={styles.noLocationsDescription}>
+                                Try another status or category filter.
+                            </Text>
+                        </View>
+                    </View>
+                ): null}
 
                 <View
                     style={[styles.mapControls, selectedAdventure && styles.mapControlsWithPreview]}
@@ -543,6 +614,45 @@ function createStyles(colors: AppColors) {
             color: colors.textPrimary,
             fontSize: 12,
             fontWeight: "800",
+        },
+        statusFilters: {
+            flexDirection: "row",
+            gap: spacing.sm,
+            marginHorizontal: spacing.lg,
+            marginTop: spacing.md,
+        },
+        statusFilter: {
+            flex: 1,
+            minHeight: 42,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: spacing.xs,
+            paddingHorizontal: spacing.sm,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 16,
+            shadowColor: "#000000",
+            shadowOffset: {
+                width: 0,
+                height: 2,
+            },
+            shadowOpacity: 0.08,
+            shadowRadius: 4,
+            elevation: 2
+        },
+        statusFilterSelected: {
+            backgroundColor: colors.forest,
+            borderColor: colors.forest
+        },
+        statusFilterText: {
+            color: colors.textSecondary,
+            fontSize: 11,
+            fontWeight: "800"
+        },
+        statusFilterTextSelected: {
+            color: colors.background
         },
         mapErrorCard: {
             position: "absolute",
