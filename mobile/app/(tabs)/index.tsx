@@ -10,7 +10,8 @@ import { FeaturedAdventureCard } from "@/components/home/FeaturedAdventureCard";
 import { RecentAdventureCard } from "@/components/home/RecentAdventureCard";
 import { OfflineDataState } from "@/components/network/OfflineDataState";
 import { useNetworkStatus } from "@/features/network/NetworkProvider";
-import { activeCollection } from "@/data/home";
+import { useCollections } from "@/features/collections/useCollections";
+import type { AdventureCollection } from "@/types/collection";
 import { useAdventures } from "@/features/adventures/useAdventures";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { ApiError } from "@/lib/api/ApiError";
@@ -46,6 +47,8 @@ export default function HomeScreen() {
         isRefetching
     } = useAdventures({limit: 100});
 
+    const collectionsQuery = useCollections();
+
     const adventures: Adventure[] = data?.items ?? [];
 
     const completedAdventures = adventures.filter((adventure) => adventure.status === "completed");
@@ -53,6 +56,20 @@ export default function HomeScreen() {
     const plannedAdventures = adventures.filter((adventure) => adventure.status === "wishlist" && adventure.adventure_date >= getTodayDateValue()).sort((first, second) => first.adventure_date.localeCompare(second.adventure_date));
 
     const upcomingAdventure = plannedAdventures[0] ?? null;
+
+    const collections: AdventureCollection[] = collectionsQuery.data ?? [];
+
+    const activeCollection = [...collections].filter((collection) => collection.adventure_count < collection.target_count).sort((first, second) => {
+        const firstProgress = first.target_count > 0 ? first.adventure_count / first.target_count : 0;
+
+        const secondProgress = second.target_count > 0 ? second.adventure_count / second.target_count : 0;
+
+        if(secondProgress !== firstProgress) {
+            return secondProgress - firstProgress;
+        }
+
+        return second.updated_at.localeCompare(first.updated_at);
+    })[0] ?? null;
 
     const currentYear = new Date().getFullYear();
 
@@ -109,8 +126,8 @@ export default function HomeScreen() {
                 showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl 
-                        refreshing={isRefetching}
-                        onRefresh={() => void refetch()}
+                        refreshing={isRefetching || collectionsQuery.isRefetching}
+                        onRefresh={() => void Promise.all([refetch(), collectionsQuery.refetch()])}
                         tintColor={colors.forest}
                     />
                 }
@@ -126,7 +143,7 @@ export default function HomeScreen() {
                         </Text>
                     </View>
 
-                    <Pressable
+                    {/* <Pressable
                         accessibilityRole="button"
                         accessibilityLabel="Open notifications"
                         style={({pressed}) => [
@@ -136,7 +153,7 @@ export default function HomeScreen() {
                         <Ionicons name="notifications-outline" size={22} color={colors.textPrimary} />
 
                         <View style={styles.notifcationDot} />
-                    </Pressable>
+                    </Pressable> */}
                 </View>
 
                 {isLoading ? (
@@ -248,16 +265,115 @@ export default function HomeScreen() {
                 <View style={styles.section}>
                     <View style={styles.sectionHeading}>
                         <View>
-                            <Text style={styles.sectionEyebrow}>In progress</Text>
-                            <Text style={styles.sectionTitle}>Keep exploring</Text>
+                            <Text style={styles.sectionEyebrow}>
+                                In progress
+                            </Text>
+
+                            <Text style={styles.sectionTitle}>
+                                Keep exploring
+                            </Text>
                         </View>
 
-                        <Pressable>
+                        <Pressable
+                            accessibilityRole="button"
+                            onPress={() => router.push("/collections")}
+                        >
                             <Text style={styles.linkText}>View all</Text>
                         </Pressable>
                     </View>
 
-                    <CollectionProgressCard {...activeCollection} />
+                    {!isOnline && collectionsQuery.data === undefined ? (
+                        <OfflineDataState 
+                            compact
+                            title="Collections aren't cached yet"
+                            description="Reconnect and open Collections once to save them on this device."
+                        />
+                    ): collectionsQuery.isLoading ? (
+                        <View style={styles.collectionState}>
+                            <ActivityIndicator size="small" color={colors.forest} />
+
+                            <Text style={styles.collectionStateText}>
+                                Finding your next goal...
+                            </Text>
+                        </View>
+                    ): collectionsQuery.isError ? (
+                        <View style={styles.collectionState}>
+                            <Ionicons name="alert-circle-outline" size={24} color={colors.danger} />
+
+                            <Text style={styles.collectionStateTitle}>
+                                Collections unavailable
+                            </Text>
+
+                            <Pressable
+                                disabled={collectionsQuery.isRefetching}
+                                onPress={() => void collectionsQuery.refetch()}
+                            >
+                                <Text style={styles.linkText}>
+                                    Try again
+                                </Text>
+                            </Pressable>
+                        </View>
+                    ): activeCollection ? (
+                        <CollectionProgressCard 
+                            title={activeCollection.title}
+                            description={activeCollection.description}
+                            completed={activeCollection.adventure_count}
+                            total={activeCollection.target_count}
+                            icon={activeCollection.icon}
+                            onPress={() => router.push({
+                                pathname: "/collections/[collectionId]",
+                                params: {
+                                    collectionId: activeCollection.id
+                                }
+                            })}
+                        />
+                    ): collections.length > 0 ? (
+                        <Pressable
+                            accessibilityRole="button"
+                            onPress={() => router.push("/collections")}
+                            style={({pressed}) => [styles.collectionEmptyState, pressed && styles.pressed]}
+                        >
+                            <View style={styles.collectionEmptyIcon}>
+                                <Ionicons name="checkmark-circle-outline" size={25} color={colors.success} />
+                            </View>
+
+                            <View style={styles.collectionEmptyContent}>
+                                <Text style={styles.collectionEmptyTitle}>
+                                    Every goal is complete
+                                </Text>
+
+                                <Text style={styles.collectionEmptyText}>
+                                    Open Collections to revisit your achievements or create another goal.
+                                </Text>
+                            </View>
+
+                            <Ionicons name="chevron-forward" size={20} color={colors.forest} />
+                        </Pressable>
+                    ): (
+                        <Pressable
+                            accessibilityRole="button"
+                            onPress={() => router.push("/collections/create")}
+                            style={({pressed}) => [styles.collectionEmptyState, pressed && styles.pressed]}
+                        >
+                            <View style={styles.collectionEmptyIcon}>
+                                <Ionicons name="albums-outline" size={25} color={colors.forest} />
+                            </View>
+
+                            <View style={styles.collectionEmptyContent}>
+                                <Text style={styles.collectionEmptyTitle}>
+                                    Create your first collection
+                                </Text>
+
+                                <Text style={styles.collectionEmptyText}>
+                                    Group adventures around places, activities, or goals.
+                                </Text>
+                            </View>
+
+                            <Ionicons name="arrow-forward" size={20} color={colors.forest} />
+                        </Pressable>
+                    )}
+
+                    {/* <CollectionProgressCard {...activeCollection} /> */}
                 </View>
 
                 <View style={styles.section}>
@@ -515,6 +631,61 @@ function createStyles(colors: AppColors) {
             fontSize: 13,
             lineHeight: 19,
             textAlign: "center"
+        },
+        collectionState: {
+            minHeight: 150,
+            alignItems: "center",
+            justifyContent: "center",
+            gap: spacing.sm,
+            padding: spacing.lg,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 24,
+        },
+        collectionStateTitle: {
+            color: colors.textPrimary,
+            fontSize: 15,
+            fontWeight: "800"
+        },
+        collectionStateText: {
+            color: colors.textSecondary,
+            fontSize: 13,
+            fontWeight: "600",
+            textAlign: "center"
+        },
+        collectionEmptyState: {
+            minHeight: 112,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.md,
+            padding: spacing.lg,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 24,
+        },
+        collectionEmptyIcon: {
+            width: 48,
+            height: 48,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: colors.surfaceMuted,
+            borderRadius: 18
+        },
+        collectionEmptyContent: {
+            flex: 1
+        },
+        collectionEmptyTitle: {
+            color: colors.textPrimary,
+            fontSize: 15,
+            fontWeight: "800"
+        },
+        collectionEmptyText: {
+            marginTop: spacing.xs,
+            color: colors.textSecondary,
+            fontSize: 12,
+            lineHeight: 17
         }
     });
 }

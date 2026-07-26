@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-// import { AdventureCollection } from "@/data/profile";
 import type { AdventureCollection } from "@/types/collection";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 

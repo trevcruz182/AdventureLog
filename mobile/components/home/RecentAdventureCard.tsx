@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-// import { RecentAdventure } from "@/data/home";
 import type { Adventure } from "@/types/adventure";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 

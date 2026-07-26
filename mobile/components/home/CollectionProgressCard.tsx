@@ -11,12 +11,13 @@ type CollectionProgressCardProps = {
     completed: number;
     total: number;
     icon: IconName;
+    onPress: () => void;
 };
 
-export function CollectionProgressCard({title, description, completed, total, icon}: CollectionProgressCardProps) {
+export function CollectionProgressCard({title, description, completed, total, icon, onPress}: CollectionProgressCardProps) {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
-    const progress = Math.min(completed / total, 1);
+    const progress = total > 0 ? Math.min(completed / total, 1) : 0;
 
     return (
         <Pressable
@@ -24,6 +25,8 @@ export function CollectionProgressCard({title, description, completed, total, ic
             style={({pressed}) => [
                 styles.card, pressed && styles.pressed
             ]}
+            accessibilityLabel={`Open collection ${title}`}
+            onPress={onPress}
         >
             <View style={styles.iconContainer}>
                 <Ionicons name={icon} size={24} color={colors.clay} />
