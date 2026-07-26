@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as Haptics from "expo-haptics";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
     ActivityIndicator,
     Alert,
@@ -19,6 +19,7 @@ import { router } from "expo-router";
 
 import { useNetworkStatus } from "@/features/network/NetworkProvider";
 import { useCreateAdventure } from "@/features/adventures/useAdventures";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { ApiError } from "@/lib/api/ApiError";
 import type { AdventureCreatePayload } from "@/types/adventure";
 
@@ -30,6 +31,7 @@ import { AdventureStepIndicator } from "@/components/create/AdventureStepIndicat
 import { CreateAdventureDefaultValues, CreateAdventureFormValues, createAdventureSchema } from "@/features/adventures/createAdventureSchema";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 import { deleteUploadedImageRequest, uploadImageRequest } from "@/lib/api/media";
+import { deleteCreateAdventureDraft, getCreateAdventureDraft, saveCreateAdventureDraft } from "@/lib/adventures/createAdventureDraftStorage";
 import { UploadedImage } from "@/types/media";
 
 const TOTAL_STEPS = 4;
@@ -56,13 +58,18 @@ export default function CreateScreen() {
 
     const {isOnline} = useNetworkStatus();
 
+    const {user} = useAuth();
+
     const [currentStep, setCurrentStep] = useState(1);
     const [isSaved, setIsSaved] = useState(false);
     const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
+    const [isDraftReady, setIsDraftReady] = useState(false);
+
+    const checkedDraftUserIdRef = useRef<string | null>(null);
 
     const {
         control,
-        formState: {errors},
+        formState: {errors, isDirty},
         getValues,
         handleSubmit,
         reset,
@@ -91,6 +98,90 @@ export default function CreateScreen() {
 
     const reviewValues = useWatch({control}) as CreateAdventureFormValues;
 
+    useEffect(() => {
+        if(!user?.id) {
+            return;
+        }
+
+        if(checkedDraftUserIdRef.current === user.id) {
+            return;
+        }
+
+        checkedDraftUserIdRef.current = user.id;
+
+        async function checkForDraft() {
+            if(!user) {
+                return;
+            }
+
+            try {
+                const draft = await getCreateAdventureDraft(user.id);
+
+                if(!draft) {
+                    setIsDraftReady(true);
+                    return;
+                }
+
+                const savedDate = new Date(draft.savedAt).toLocaleString();
+
+                Alert.alert("Continue your draft?", `An unfinished adventure was saved ${savedDate}. Selected photos will need to be added again.`, [
+                    {
+                        text: "Discard",
+                        style: "destructive",
+                        onPress: () => {
+                            void (async () => {
+                                await deleteCreateAdventureDraft(user.id);
+
+                                reset(CreateAdventureDefaultValues);
+                                setCurrentStep(1);
+                                setIsDraftReady(true);
+                            })();
+                        }
+                    },
+                    {
+                        text: "Continue",
+                        onPress: () => {
+                            reset({
+                                ...CreateAdventureDefaultValues,
+                                ...draft.values,
+                                photos: []
+                            });
+
+                            setCurrentStep(Math.min(Math.max(draft.currentStep, 1), TOTAL_STEPS));
+
+                            setIsDraftReady(true);
+                        }
+                    }
+                ], {
+                    cancelable: false,
+                });
+            }
+            catch (error) {
+                console.warn("Unable to restore adventure draft:", error);
+
+                setIsDraftReady(true);
+            }
+        }
+
+        void checkForDraft();
+    }, [user, reset]);
+
+    useEffect(() => {
+        if(!user?.id || !isDraftReady || !isDirty || isSaved) {
+            return;
+        }
+
+        const saveTimeout = setTimeout(() => {
+            void saveCreateAdventureDraft(user.id, reviewValues, currentStep).catch((error) => {
+                console.warn("Unable to save adventure draft:", error);
+            })
+        }, 700);
+
+        return () => {
+            clearTimeout(saveTimeout);
+        }
+    }, [user?.id, isDraftReady, isDirty, isSaved, reviewValues, currentStep]);
+    
     const createAdventureMutation = useCreateAdventure();
 
     const isSaving = createAdventureMutation.isPending || uploadProgress !== null;
@@ -174,6 +265,15 @@ export default function CreateScreen() {
             };
 
             await createAdventureMutation.mutateAsync(payload);
+
+            if(user?.id) {
+                try {
+                    await deleteCreateAdventureDraft(user.id);
+                }
+                catch (draftError) {
+                    console.warn("Unable to clear saved adventure draft:", draftError);
+                }
+            }
 
             setIsSaved(true);
 
@@ -272,8 +372,19 @@ export default function CreateScreen() {
                                     text: "Discard",
                                     style: "destructive",
                                     onPress: () => {
-                                        reset(CreateAdventureDefaultValues);
-                                        setCurrentStep(1);
+                                        void (async () => {
+                                            if(user?.id) {
+                                                try {
+                                                    await deleteCreateAdventureDraft(user.id);
+                                                }
+                                                catch (error) {
+                                                    console.warn("Unable to clear adventure draft:", error);
+                                                }
+                                            }
+
+                                            reset(CreateAdventureDefaultValues);
+                                            setCurrentStep(1);
+                                        })();
                                     }
                                 }
                             ]);
