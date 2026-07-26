@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
-import {FieldErrors, Controller, Control, UseFormSetValue} from "react-hook-form";
+import {FieldErrors, useWatch, Controller, Control, UseFormSetValue} from "react-hook-form";
 import { 
     ActivityIndicator,
     Alert,
@@ -10,11 +10,13 @@ import {
     Text,
     TextInput,
     View,
+    Platform
 } from "react-native";
 
 import { FieldError } from "./FieldError";
 
 import { CreateAdventureFormValues } from "@/features/adventures/createAdventureSchema";
+import { AdventureLocationPreview } from "./AdventureLocationPreview";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 import { useState } from "react";
 
@@ -29,7 +31,88 @@ type AdventurePlaceStepProps = {
 export function AdventurePlaceStep({control, errors, setValue, latitude, longitude}: AdventurePlaceStepProps) {
     const {colors} = useAppTheme();
     const styles = createStyles(colors);
+    
     const [isLocating, setIsLocating] = useState(false);
+    const [isGeocoding, setIsGeoCoding] = useState(false);
+
+    const locationName = useWatch({
+        control,
+        name: "locationName"
+    });
+
+    const isResolvingLocation = isLocating || isGeocoding;
+
+    async function ensureGeocodingPermission(): Promise<boolean> {
+        if(Platform.OS !== "android") {
+            return true;
+        }
+
+        const existingPermission = await Location.getForegroundPermissionsAsync();
+
+        if(existingPermission.status === "granted") {
+            return true;
+        }
+
+        const requestedPermission = await Location.requestForegroundPermissionsAsync();
+
+        if(requestedPermission.status !== "granted") {
+            Alert.alert("Location permission needed", "Android requires location permission before AdventureLog can search for coordinates.");
+
+            return false;
+        }
+
+        return true;
+    }
+
+    async function findTypedLocation() {
+        const searchValue = locationName.trim();
+
+        if(searchValue.length < 2) {
+            Alert.alert("Enter a location", "Type a place name or address before searching.");
+
+            return;
+        }
+
+        try {
+            setIsGeoCoding(true);
+
+            const hasPermission = await ensureGeocodingPermission();
+
+            if(!hasPermission) {
+                return;
+            }
+
+            const results = await Location.geocodeAsync(searchValue);
+
+            const result = results[0];
+
+            if(!result) {
+                Alert.alert("Location not found", "Try adding a city, state, or more specific address.");
+
+                return;
+            }
+
+            // setValue("latitude", result.latitude, {
+            //     shouldDirty: true,
+            //     shouldValidate: true,
+            // });
+
+            // setValue("longitude", result.longitude, {
+            //     shouldDirty: true,
+            //     shouldValidate: true, 
+            // });
+
+            updateCoordinates(result.latitude, result.longitude);
+
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        catch {
+            Alert.alert("Location search unavailable", "AdventureLog could not find coordinates for that location. Check the name and try again.");
+        }
+        finally {
+            setIsGeoCoding(false);
+        }
+    }
 
     async function captureCurrentLocation() {
         try {
@@ -46,14 +129,16 @@ export function AdventurePlaceStep({control, errors, setValue, latitude, longitu
 
             const {latitude, longitude} = result.coords;
 
-            setValue("latitude", latitude, {
-                shouldDirty: true,
-                shouldValidate: true,
-            });
-            setValue("longitude", longitude, {
-                shouldDirty: true,
-                shouldValidate: true,
-            });
+            // setValue("latitude", latitude, {
+            //     shouldDirty: true,
+            //     shouldValidate: true,
+            // });
+            // setValue("longitude", longitude, {
+            //     shouldDirty: true,
+            //     shouldValidate: true,
+            // });
+
+            updateCoordinates(latitude, longitude);
 
             const addresses = await Location.reverseGeocodeAsync({latitude, longitude});
 
@@ -82,12 +167,36 @@ export function AdventurePlaceStep({control, errors, setValue, latitude, longitu
         }
     }
 
+    function updateCoordinates(nextLatitude: number, nextLongitude: number) {
+        setValue("latitude", nextLatitude, {
+            shouldDirty: true,
+            shouldValidate: true,
+        });
+
+        setValue("longitude", nextLongitude, {
+            shouldDirty: true,
+            shouldValidate: true,
+        });
+    }
+
+    function clearCoordinates() {
+        setValue("latitude", null, {
+            shouldDirty: true,
+            shouldValidate: true,
+        });
+
+        setValue("longitude", null, {
+            shouldDirty: true,
+            shouldValidate: true
+        });
+    }
+
     return(
         <View>
             <Text style={styles.heading}>Place it on the map.</Text>
 
             <Text style={styles.description}>
-                Give the location a recognizable name and optionally save its exact coordinates.
+                Search for a place or use your current location so the adventure can appear on your map.
             </Text>
 
             <View style={styles.field}>
@@ -102,11 +211,18 @@ export function AdventurePlaceStep({control, errors, setValue, latitude, longitu
 
                             <TextInput
                                 value={value}
-                                onChangeText={onChange}
+                                onChangeText={(nextValue) => {
+                                    onChange(nextValue);
+
+                                    if(latitude !== null || longitude !== null) {
+                                        clearCoordinates();
+                                    }
+                                }}
                                 onBlur={onBlur}
                                 placeholder="Bear Mountain, New York"
                                 placeholderTextColor={colors.textMuted}
-                                returnKeyType="done"
+                                returnKeyType="search"
+                                onSubmitEditing={() => void findTypedLocation()}
                                 style={styles.textInput}
                             />
                         </View>
@@ -117,9 +233,36 @@ export function AdventurePlaceStep({control, errors, setValue, latitude, longitu
             </View>
 
             <Pressable
+                accessibilityRole="button"
+                disabled={isResolvingLocation}
+                onPress={() => void findTypedLocation()}
+                style={({pressed}) => [styles.locationButton, pressed && !isResolvingLocation && styles.pressed, isResolvingLocation && styles.buttonDisabled]}
+            >
+                <View style={styles.locationIcon}>
+                    {isGeocoding ? (
+                        <ActivityIndicator size="small" color={colors.forest} />
+                    ): (
+                        <Ionicons name="search-outline" size={23} color={colors.forest} />
+                    )}
+                </View>
+
+                <View style={styles.locationButtonContent}>
+                    <Text style={styles.locationButtonTitle}>
+                        Find this location
+                    </Text>
+
+                    <Text style={styles.locationButtonDescription}>
+                        Convert the place name or address into map coordinates.
+                    </Text>
+                </View>
+
+                <Ionicons name="chevron-forward" size={19} color={colors.textMuted} />
+            </Pressable>
+
+            <Pressable
                 onPress={() => void captureCurrentLocation()}
-                disabled={isLocating}
-                style={({pressed}) => [styles.locationButton, pressed && styles.pressed]}
+                disabled={isResolvingLocation}
+                style={({pressed}) => [styles.locationButton, styles.secondaryLocationButton, pressed && !isResolvingLocation && styles.pressed, isResolvingLocation && styles.buttonDisabled]}
             >
                 <View style={styles.locationIcon}>
                     {isLocating ? (
@@ -146,51 +289,57 @@ export function AdventurePlaceStep({control, errors, setValue, latitude, longitu
             </Pressable>
 
             {latitude !== null && longitude !== null ? (
-                <View style={styles.coordinateCard}>
-                    <View style={styles.coordinateIcon}>
-                        <Ionicons name="checkmark" size={18} color={colors.background} />
-                    </View>
+                <AdventureLocationPreview 
+                    latitude={latitude}
+                    longitude={longitude}
+                    onChangeCoordinates={updateCoordinates}
+                    onClear={clearCoordinates}
+                />
+                // <View style={styles.coordinateCard}>
+                //     <View style={styles.coordinateIcon}>
+                //         <Ionicons name="checkmark" size={18} color={colors.background} />
+                //     </View>
 
-                    <View style={styles.coordinateContent}>
-                        <Text style={styles.coordinateTitle}>
-                            Location captured
-                        </Text>
+                //     <View style={styles.coordinateContent}>
+                //         <Text style={styles.coordinateTitle}>
+                //             Location captured
+                //         </Text>
 
-                        <Text style={styles.coordinateText}>
-                            {latitude.toFixed(5)}, {longitude.toFixed(5)}
-                        </Text>
-                    </View>
+                //         <Text style={styles.coordinateText}>
+                //             {latitude.toFixed(5)}, {longitude.toFixed(5)}
+                //         </Text>
+                //     </View>
 
-                    <Pressable
-                        onPress={() => {
-                            setValue("latitude", null, {
-                                shouldDirty: true,
-                                shouldValidate: true,
-                            });
-                            setValue("longitude", null, {
-                                shouldDirty: true,
-                                shouldValidate: true,
-                            });
-                        }}
-                        hitSlop={10}
-                    >
-                        <Ionicons
-                            name="trash-outline"
-                            size={19}
-                            color={colors.danger}
-                        />
-                    </Pressable>
-                </View>
+                //     <Pressable
+                //         onPress={() => {
+                //             setValue("latitude", null, {
+                //                 shouldDirty: true,
+                //                 shouldValidate: true,
+                //             });
+                //             setValue("longitude", null, {
+                //                 shouldDirty: true,
+                //                 shouldValidate: true,
+                //             });
+                //         }}
+                //         hitSlop={10}
+                //     >
+                //         <Ionicons
+                //             name="trash-outline"
+                //             size={19}
+                //             color={colors.danger}
+                //         />
+                //     </Pressable>
+                // </View>
             ): (
                 <View style={styles.mapPlaceholder}>
                     <Ionicons name="map-outline" size={34} color={colors.forest} />
 
                     <Text style={styles.mapPlaceholderTitle}>
-                        Coordinates are optional
+                        Find this place on your map
                     </Text>
 
                     <Text style={styles.mapPlaceholderText}>
-                        You can still save the adventure using only a location name.
+                        Enter a place or address above, then search for its coordinates.
                     </Text>
                 </View>
             )}
@@ -320,6 +469,12 @@ function createStyles(colors: AppColors) {
             fontSize: 13,
             lineHeight: 19,
             textAlign: "center",
+        },
+        secondaryLocationButton: {
+            marginTop: spacing.md,
+        },
+        buttonDisabled: {
+            opacity: 0.55
         },
         pressed: {
             opacity: 0.82
