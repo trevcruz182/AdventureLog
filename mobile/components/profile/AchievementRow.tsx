@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
-import { AdventureAchievement } from "@/data/profile";
+import type { AdventureAchievement } from "@/features/achievements/achievementProgress";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 
 type AchievementRowProps = {
@@ -29,9 +29,11 @@ export function AchievementRow({achievement, isLast = false}: AchievementRowProp
                 </Text>
             </View>
 
-            <Text style={styles.date}>
-                {achievement.earnedDate}
-            </Text>
+            {achievement.earnedDate ? (
+                <Text style={styles.date}>
+                    {achievement.earnedDate}
+                </Text>
+            ) : null}
         </View>
     );
 }

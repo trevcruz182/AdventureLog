@@ -9,7 +9,8 @@ import { ProfileCollectionCard } from "@/components/profile/ProfileCollectionCar
 import { ProfileStats } from "@/components/profile/ProfileStats";
 import { OfflineDataState } from "@/components/network/OfflineDataState";
 import { useNetworkStatus } from "@/features/network/NetworkProvider";
-import type { AdventureAchievement, ProfileStat } from "@/data/profile";
+import type { ProfileStat } from "@/data/profile";
+import { getAdventureAchievements } from "@/features/achievements/achievementProgress";
 import { useAdventures } from "@/features/adventures/useAdventures";
 import { useCollections } from "@/features/collections/useCollections";
 import { ApiError } from "@/lib/api/ApiError";
@@ -18,16 +19,6 @@ import type { Adventure } from "@/types/adventure";
 
 import { AppColors, spacing, useAppTheme } from "@/theme";
 import type { AdventureCollection } from "@/types/collection";
-
-function formatAchievementDate(value: string): string {
-  	const [year, month, day] = value.split("-").map(Number);
-
-	return new Intl.DateTimeFormat("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-	}).format(new Date(year, month-1, day));
-}
 
 export default function ProfileScreen() {
   const {colors, resolvedAppearance} = useAppTheme();
@@ -45,9 +36,13 @@ export default function ProfileScreen() {
 
   const collectionsQuery = useCollections();
 
-  const styles = createStyles(colors);
+  const adventures: Adventure[] = data?.items ?? [];
 
-	const adventures: Adventure[] = data?.items ?? [];
+  const achievements = getAdventureAchievements(adventures, collectionsQuery.data ?? []);
+
+  const earnedAchievements = achievements.filter((achievements) => achievements.isEarned);
+
+  const styles = createStyles(colors);
 
   const completedAdventures = adventures.filter((adventure) => adventure.status === "completed");
 
@@ -73,47 +68,47 @@ export default function ProfileScreen() {
 		},
 	]
 
-	const adventuresOldestFirst = [...completedAdventures].sort((first, second) => first.adventure_date.localeCompare(second.adventure_date));
+	// const adventuresOldestFirst = [...completedAdventures].sort((first, second) => first.adventure_date.localeCompare(second.adventure_date));
 
-	const adventuresWithPhotos = adventuresOldestFirst.filter((adventure) => adventure.photos.length > 0);
+	// const adventuresWithPhotos = adventuresOldestFirst.filter((adventure) => adventure.photos.length > 0);
 
-	const earnedAchievements: AdventureAchievement[] = [];
+	// const earnedAchievements: AdventureAchievement[] = [];
 
-	const firstAdventure = adventuresOldestFirst[0];
+	// const firstAdventure = adventuresOldestFirst[0];
 
-	if(firstAdventure) {
-		earnedAchievements.push({
-			id: "first-mark",
-			title: "First Mark",
-			description: "Logged your first AdventureLog memory.",
-			earnedDate: formatAchievementDate(firstAdventure.adventure_date),
-			icon: "trail-sign-outline"
-		});
-	}
+	// if(firstAdventure) {
+	// 	earnedAchievements.push({
+	// 		id: "first-mark",
+	// 		title: "First Mark",
+	// 		description: "Logged your first AdventureLog memory.",
+	// 		earnedDate: formatAchievementDate(firstAdventure.adventure_date),
+	// 		icon: "trail-sign-outline"
+	// 	});
+	// }
 
-	const fifthAdventure = adventuresOldestFirst[4];
+	// const fifthAdventure = adventuresOldestFirst[4];
 
-	if(fifthAdventure) {
-		earnedAchievements.push({
-			id: "first-five",
-			title: "First Five",
-			description: "Collected five adventure memories.",
-			earnedDate: formatAchievementDate(fifthAdventure.adventure_date),
-			icon: "compass-outline"
-		});
-	}
+	// if(fifthAdventure) {
+	// 	earnedAchievements.push({
+	// 		id: "first-five",
+	// 		title: "First Five",
+	// 		description: "Collected five adventure memories.",
+	// 		earnedDate: formatAchievementDate(fifthAdventure.adventure_date),
+	// 		icon: "compass-outline"
+	// 	});
+	// }
 
-	const thirdPhotoAdventure = adventuresWithPhotos[2];
+	// const thirdPhotoAdventure = adventuresWithPhotos[2];
 
-	if(thirdPhotoAdventure) {
-		earnedAchievements.push({
-			id: "memory-keeper",
-			title: "Memory Keeper",
-			description: "Added photos to three adventures.",
-			earnedDate: formatAchievementDate(thirdPhotoAdventure.adventure_date),
-			icon: "camera-outline"
-		});
-	}
+	// if(thirdPhotoAdventure) {
+	// 	earnedAchievements.push({
+	// 		id: "memory-keeper",
+	// 		title: "Memory Keeper",
+	// 		description: "Added photos to three adventures.",
+	// 		earnedDate: formatAchievementDate(thirdPhotoAdventure.adventure_date),
+	// 		icon: "camera-outline"
+	// 	});
+	// }
 
     const {user, logout} = useAuth();
 
@@ -358,7 +353,10 @@ export default function ProfileScreen() {
                     </Text>
                   </View>
 
-                  <Pressable>
+                  <Pressable
+				  	accessibilityRole="button"
+					onPress={() => router.push("/achievements")}
+				  >
                     <Text style={styles.sectionLink}>
                       See all
                     </Text>
@@ -371,7 +369,7 @@ export default function ProfileScreen() {
 									<AchievementRow 
 										key={achievement.id}
 										achievement={achievement}
-										// showDivider={index < earnedAchievements.length-1}
+                    					isLast={index === earnedAchievements.length - 1}
 									/>
 								))}
 							</View>
