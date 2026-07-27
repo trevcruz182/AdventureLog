@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { Pressable, ActivityIndicator, RefreshControl, StyleSheet, Text, View, Alert, Image, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -43,6 +44,8 @@ export default function ProfileScreen() {
   const earnedAchievements = achievements.filter((achievements) => achievements.isEarned);
 
   const styles = createStyles(colors);
+
+  const appVersion = Constants.expoConfig?.version ?? "1.0.0";
 
   const completedAdventures = adventures.filter((adventure) => adventure.status === "completed");
 
@@ -447,7 +450,7 @@ export default function ProfileScreen() {
               </Pressable>
 
               <Text style={styles.version}>
-                AdventureLog · Development Build
+                AdventureLog · Version {appVersion}
               </Text>
             </ScrollView>
         </SafeAreaView>

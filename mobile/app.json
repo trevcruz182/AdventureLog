@@ -1,11 +1,12 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "AdventureLog",
+    "slug": "adventure-log",
     "version": "1.0.0",
+    "description": "A personal mobile journal for preserving adventures, places, photos, and meaningful memories.",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "adventureLog",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
