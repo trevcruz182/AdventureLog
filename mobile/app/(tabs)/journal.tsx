@@ -17,6 +17,8 @@ type CategoryFilter = "all" | AdventureCategory;
 
 type StatusFilter = "all" | AdventureStatus;
 
+type SortOrder = "newest" | "oldest";
+
 type JournalSection = {
     title: string;
     data: Adventure[];
@@ -99,6 +101,7 @@ export default function JournalScreen() {
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
     const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
+    const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
 
     const sections = useMemo<JournalSection[]>(() => {
         const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -116,6 +119,19 @@ export default function JournalScreen() {
 
             return matchesCategory && matchesStatus && matchesSearch;
         });
+
+        filteredAdventures.sort((firstAdventure, secondAdventure) => {
+            const dateComparison = firstAdventure.adventure_date.localeCompare(secondAdventure.adventure_date);
+
+            if(dateComparison !== 0) {
+                return sortOrder === "newest" ? -dateComparison : dateComparison;
+            }
+
+            // When adventures have the same date, compare using created time
+            const createdComparison = firstAdventure.created_at.localeCompare(secondAdventure.created_at);
+
+            return sortOrder === "newest" ? -createdComparison : createdComparison;
+        })
 
         const grouped = filteredAdventures.reduce((groups, adventure) => {
             const [year, month] = adventure.adventure_date.split("-").map(Number);
@@ -138,7 +154,7 @@ export default function JournalScreen() {
             title,
             data: sectionData
         }));
-    }, [data, searchQuery, selectedCategory, selectedStatus]);
+    }, [data, searchQuery, selectedCategory, selectedStatus, sortOrder]);
 
     const resultCount = sections.reduce((total, section) => total + section.data.length, 0);
     const hasActiveFilters = searchQuery.trim().length > 0 || selectedCategory !== "all" || selectedStatus !== "all";
@@ -223,20 +239,10 @@ export default function JournalScreen() {
                                     Adventure Journal
                                 </Text>
                             </View>
-
-                            <Pressable
-                                accessibilityRole="button"
-                                accessibilityLabel="Change journal view"
-                                style={({pressed}) => [
-                                    styles.viewButton, pressed && styles.pressed
-                                ]}
-                            >
-                                <Ionicons name="grid-outline" size={21} color={colors.textPrimary} />
-                            </Pressable>
                         </View>
 
                         <Text style={styles.description}>
-                            Revist the places, moments, and stories you have collected along the way.
+                            Revisit the places, moments, and stories you have collected along the way.
                         </Text>
 
                         <View style={styles.searchContainer}>
@@ -319,11 +325,16 @@ export default function JournalScreen() {
                                 {resultCount === 1 ? "memory" : "memories"}
                             </Text>
 
-                            <Pressable style={styles.sortButton}>
-                                <Ionicons name="swap-vertical-outline" size={16} color={colors.forest} />
+                            <Pressable 
+                                accessibilityRole="button"
+                                accessibilityLabel={sortOrder === "newest" ? "Sort adventures oldest first" : "Sort adventures newest first"}
+                                onPress={() => setSortOrder((currentOrder) => currentOrder === "newest" ? "oldest" : "newest")}
+                                style={({pressed}) => [styles.sortButton, pressed && styles.pressed]}
+                            >
+                                <Ionicons name={sortOrder === "newest" ? "arrow-down-outline" : "arrow-up-outline"} size={16} color={colors.forest} />
 
                                 <Text style={styles.sortText}>
-                                    Newest
+                                    {sortOrder === "newest" ? "Newest" : "Oldest"}
                                 </Text>
                             </Pressable>
                         </View>
@@ -433,16 +444,6 @@ function createStyles(colors: AppColors) {
             color: colors.textPrimary,
             fontSize: 30,
             fontWeight: "800",
-        },
-        viewButton: {
-            width: 46,
-            height: 46,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: colors.surface,
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 23,
         },
         pressed: {
             opacity: 0.82,
