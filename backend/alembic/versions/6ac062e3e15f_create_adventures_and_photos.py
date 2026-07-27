@@ -5,6 +5,7 @@ Revises: 6e586c150235
 Create Date: 2026-07-15 11:33:57.884224
 
 """
+from os import name
 from typing import Sequence, Union
 
 from alembic import op
@@ -71,4 +72,8 @@ def downgrade() -> None:
     op.drop_index('ix_adventures_user_date', table_name='adventures')
     op.drop_index('ix_adventures_user_category', table_name='adventures')
     op.drop_table('adventures')
+
+    sa.Enum(name="adventure_status").drop(op.get_bind(), checkfirst=True)
+
+    sa.Enum(name="adventure_category").drop(op.get_bind(), checkfirst=True)
     # ### end Alembic commands ###
