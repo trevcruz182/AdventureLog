@@ -20,7 +20,7 @@ export function OfflineBanner() {
                 <Ionicons name="cloud-offline-outline" size={17} color="#FFFFFF" />
 
                 <Text style={styles.text}>
-                    You're offline. Saved memories remain available.
+                    You&apos;re offline. Saved memories remain available.
                 </Text>
             </View>
         </SafeAreaView>

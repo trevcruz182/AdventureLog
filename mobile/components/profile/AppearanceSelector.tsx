@@ -3,11 +3,11 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppearancePreference, AppColors, spacing, useAppTheme } from "@/theme";
 
-const appearanceOptions: Array<{
+const appearanceOptions: {
     label: string;
     value: AppearancePreference;
     icon: React.ComponentProps<typeof Ionicons>["name"]
-}> = [
+}[] = [
     {
         label: "System",
         value: "system",

@@ -91,7 +91,7 @@ export function AdventurePhotosStep({photos, onChangePhotos}: AdventurePhotosSte
             <Text style={styles.heading}>Bring it back to life.</Text>
 
             <Text style={styles.description}>
-                Add up to five photos. Your first photo will become the adventure's cover image.
+                Add up to five photos. Your first photo will become the adventure&apos;s cover image.
             </Text>
 
             <View style={styles.actionRow}>

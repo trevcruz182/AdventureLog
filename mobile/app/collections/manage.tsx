@@ -12,7 +12,6 @@ import { AppColors, spacing, useAppTheme } from "@/theme";
 import { useMemo, useState } from "react";
 import { useNetworkStatus } from "@/features/network/NetworkProvider";
 import { OfflineDataState } from "@/components/network/OfflineDataState";
-import { AdventureCollectionDetail } from "@/types/collection";
 
 const categoryIcons: Record<Adventure["category"], React.ComponentProps<typeof Ionicons>["name"]> = {
     hiking: "trail-sign-outline",

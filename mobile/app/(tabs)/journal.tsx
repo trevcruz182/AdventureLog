@@ -24,11 +24,11 @@ type JournalSection = {
     data: Adventure[];
 }
 
-const categoryFilters: Array<{
+const categoryFilters: {
     label: string;
     value: CategoryFilter;
     icon: React.ComponentProps<typeof Ionicons>["name"];
-}> = [
+}[] = [
     {
         label: "All",
         value: "all",
@@ -61,11 +61,11 @@ const categoryFilters: Array<{
     },
 ];
 
-const statusFilters: Array<{
+const statusFilters: {
     label: string;
     value: StatusFilter;
     icon: React.ComponentProps<typeof Ionicons>["name"];
-}> = [
+}[] = [
     {
         label: "All",
         value: "all",

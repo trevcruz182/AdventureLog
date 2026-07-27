@@ -12,11 +12,11 @@ type AdventureBasicsStepProps = {
     errors: FieldErrors<CreateAdventureFormValues>;
 };
 
-const categoryOptions: Array<{
+const categoryOptions: {
     value: (typeof adventureCategories)[number];
     label: string;
     icon: React.ComponentProps<typeof Ionicons>["name"];
-}> = [
+}[] = [
     {
         value: "hiking",
         label: "Hiking",

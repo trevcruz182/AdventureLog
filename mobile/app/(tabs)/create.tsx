@@ -36,7 +36,7 @@ import { UploadedImage } from "@/types/media";
 
 const TOTAL_STEPS = 4;
 
-const stepFields: Record<number, Array<keyof CreateAdventureFormValues>> = {
+const stepFields: Record<number, (keyof CreateAdventureFormValues)[]> = {
     1: ["title", "status", "category", "description", "date"],
     2: ["locationName", "latitude", "longitude"],
     3: ["photos"],
@@ -280,6 +280,8 @@ export default function CreateScreen() {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
         catch (error) {
+            await cleanupUploadedImages(uploadedImages.map((image) => image.public_id));
+
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 
             const message = error instanceof ApiError ? error.message : "AdventureLog could not save this adventure. Check your connection and try again.";

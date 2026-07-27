@@ -36,11 +36,11 @@ const DEFAULT_REGION: Region = {
     longitudeDelta: 0.75
 };
 
-const mapFilters: Array<{
+const mapFilters: {
     label: string;
     value: MapFilter;
     icon: React.ComponentProps<typeof Ionicons>["name"];
-}> = [
+}[] = [
     {
         label: "All",
         value: "all",
@@ -73,11 +73,11 @@ const mapFilters: Array<{
     },
 ]
 
-const mapStatusFilters: Array<{
+const mapStatusFilters: {
     label: string;
     value: MapStatusFilter;
     icon: React.ComponentProps<typeof Ionicons>["name"];
-}> = [
+}[] = [
     {
         label: "Completed",
         value: "completed",

@@ -243,7 +243,7 @@ export default function RegisterScreen() {
                     />
 
                     <Text style={styles.termsText}>
-                        By creating an account, you agree to AdventureLog's future Terms of Service and Privacy Policy.
+                        By creating an account, you agree to AdventureLog&apos;s future Terms of Service and Privacy Policy.
                     </Text>
 
                     <Pressable

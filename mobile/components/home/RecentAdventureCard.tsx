@@ -53,7 +53,7 @@ export function RecentAdventureCard({adventure, onPress}: RecentAdventureCardPro
                     <Text style={styles.category}>
                         {categoryLabels[adventure.category]}
                     </Text>
-                    <Text style={styles.date}>{adventure.adventure_date}</Text>
+                    <Text style={styles.date}>{formatAdventureDate(adventure.adventure_date)}</Text>
                 </View>
 
                 <Text numberOfLines={2} style={styles.title}>

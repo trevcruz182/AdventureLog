@@ -24,7 +24,7 @@ import { AppColors, spacing, useAppTheme } from "@/theme";
 
 const TOTAL_STEPS = 4;
 
-const stepFields: Record<number, Array<keyof CreateAdventureFormValues>> = {
+const stepFields: Record<number, (keyof CreateAdventureFormValues)[]> = {
     1: [
         "title",
         "status",
