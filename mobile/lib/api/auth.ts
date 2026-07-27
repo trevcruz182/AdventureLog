@@ -67,7 +67,7 @@ export async function refreshRequest(refreshToken: string): Promise<TokenPair> {
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            refreshToken: refreshToken
+            refresh_token: refreshToken
         })
     });
 
