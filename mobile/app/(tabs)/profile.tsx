@@ -9,7 +9,7 @@ import { ProfileCollectionCard } from "@/components/profile/ProfileCollectionCar
 import { ProfileStats } from "@/components/profile/ProfileStats";
 import { OfflineDataState } from "@/components/network/OfflineDataState";
 import { useNetworkStatus } from "@/features/network/NetworkProvider";
-import type { ProfileStat } from "@/data/profile";
+import type { ProfileStat } from "@/types/profile";
 import { getAdventureAchievements } from "@/features/achievements/achievementProgress";
 import { useAdventures } from "@/features/adventures/useAdventures";
 import { useCollections } from "@/features/collections/useCollections";

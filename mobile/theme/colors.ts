@@ -7,7 +7,7 @@ export const sharedColors = {
     sand: "#D5C19D",
 
     success: "#477557",
-    warning: "B78138",
+    warning: "#B78138",
     danger: "#A95245",
 
     white: "#FFFFFF",
@@ -43,7 +43,7 @@ export const darkColors = {
     textSecondary: "#B7BDB6",
     textMuted: "#89928B",
 
-    border: "#353E7",
+    border: "#353E37",
     tabBar: "#1B221D",
     overlay: "rgba(4, 7, 5, 0.68)",
 

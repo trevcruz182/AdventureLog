@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { ProfileStat } from "@/data/profile";
+import type { ProfileStat } from "@/types/profile";
 import { AppColors, spacing, useAppTheme } from "@/theme";
 
 type ProfileStatsProps = {
