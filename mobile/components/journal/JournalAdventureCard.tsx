@@ -46,7 +46,6 @@ export function JournalAdventureCard({adventure, onPress}: JournalAdventureCardP
             ]}
         >
             <View style={styles.imageWrapper}>
-                {/* <Image source={{uri: adventure.photos[0]?.image_url}} style={styles.image} /> */}
                 {adventure.photos[0]?.image_url ? (
                     <Image 
                         source={{uri: adventure.photos[0].image_url}}

@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
-import { Pressable, ActivityIndicator, RefreshControl, StyleSheet, Text, View, Alert, Image, ScrollView } from "react-native";
+import { Pressable, ActivityIndicator, RefreshControl, StyleSheet, Text, View, Alert, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
@@ -71,48 +71,6 @@ export default function ProfileScreen() {
 		},
 	]
 
-	// const adventuresOldestFirst = [...completedAdventures].sort((first, second) => first.adventure_date.localeCompare(second.adventure_date));
-
-	// const adventuresWithPhotos = adventuresOldestFirst.filter((adventure) => adventure.photos.length > 0);
-
-	// const earnedAchievements: AdventureAchievement[] = [];
-
-	// const firstAdventure = adventuresOldestFirst[0];
-
-	// if(firstAdventure) {
-	// 	earnedAchievements.push({
-	// 		id: "first-mark",
-	// 		title: "First Mark",
-	// 		description: "Logged your first AdventureLog memory.",
-	// 		earnedDate: formatAchievementDate(firstAdventure.adventure_date),
-	// 		icon: "trail-sign-outline"
-	// 	});
-	// }
-
-	// const fifthAdventure = adventuresOldestFirst[4];
-
-	// if(fifthAdventure) {
-	// 	earnedAchievements.push({
-	// 		id: "first-five",
-	// 		title: "First Five",
-	// 		description: "Collected five adventure memories.",
-	// 		earnedDate: formatAchievementDate(fifthAdventure.adventure_date),
-	// 		icon: "compass-outline"
-	// 	});
-	// }
-
-	// const thirdPhotoAdventure = adventuresWithPhotos[2];
-
-	// if(thirdPhotoAdventure) {
-	// 	earnedAchievements.push({
-	// 		id: "memory-keeper",
-	// 		title: "Memory Keeper",
-	// 		description: "Added photos to three adventures.",
-	// 		earnedDate: formatAchievementDate(thirdPhotoAdventure.adventure_date),
-	// 		icon: "camera-outline"
-	// 	});
-	// }
-
     const {user, logout} = useAuth();
 
     return(
@@ -138,14 +96,6 @@ export default function ProfileScreen() {
                     Profile
                   </Text>
                 </View>
-
-                {/* <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Edit profile"
-                  style={({pressed}) => [styles.editButton, pressed && styles.pressed]}
-                >
-                  <Ionicons name="pencil-outline" size={20} color={colors.textPrimary} />
-                </Pressable> */}
               </View>
 
               <View style={styles.identity}>
@@ -178,7 +128,6 @@ export default function ProfileScreen() {
                 </Text>
               </View>
 
-              {/* <ProfileStats stats={profileStats} /> */}
 			  {!isOnline && data === undefined ? (
 				<OfflineDataState 
 					compact
@@ -221,40 +170,6 @@ export default function ProfileScreen() {
 				<ProfileStats stats={realProfileStats} />
 			  )}
 
-              {/* <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <View>
-                    <Text style={styles.sectionEyebrow}>
-                      In progress
-                    </Text>
-
-                    <Text style={styles.sectionTitle}>
-                      Collections
-                    </Text>
-                  </View>
-
-                  <Pressable>
-                    <Text style={styles.sectionLink}>
-                      View all
-                    </Text>
-                  </Pressable>
-                </View>
-
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.horizontalList}
-                  style={styles.horizontalScroll}
-                >
-                  {profileCollections.map((collection) => (
-                    <ProfileCollectionCard key={collection.id} collection={collection} />
-                  ))}
-                </ScrollView>
-              </View> */}
-
-              
-
-                {/* <View style={styles.panel}> */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View>
@@ -413,16 +328,6 @@ export default function ProfileScreen() {
                 <Text style={styles.sectionTitle}>
                   Settings
                 </Text>
-
-                {/* <View style={styles.panel}>
-                  <SettingsRow icon="person-outline" title="Personal information" description="Name, username, and profile photo" />
-
-                  <SettingsRow icon="notifications-outline" title="Notifications" description="Reminders, achievements, and activity" />
-
-                  <SettingsRow icon="shield-checkmark-outline" title="Privacy and data" description="Location, photos, and account data" />
-
-                  <SettingsRow icon="help-circle-outline" title="Help and feedback" description="Get support or share an idea" isLast />
-                </View> */}
               </View>
 
               <Pressable

@@ -142,18 +142,6 @@ export default function HomeScreen() {
                             {firstName ? `Ready to wander, ${firstName}?` : "Ready to wander?"}
                         </Text>
                     </View>
-
-                    {/* <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel="Open notifications"
-                        style={({pressed}) => [
-                            styles.notifcationButton, pressed && styles.pressed,
-                        ]}
-                    >
-                        <Ionicons name="notifications-outline" size={22} color={colors.textPrimary} />
-
-                        <View style={styles.notifcationDot} />
-                    </Pressable> */}
                 </View>
 
                 {isLoading ? (
@@ -372,8 +360,6 @@ export default function HomeScreen() {
                             <Ionicons name="arrow-forward" size={20} color={colors.forest} />
                         </Pressable>
                     )}
-
-                    {/* <CollectionProgressCard {...activeCollection} /> */}
                 </View>
 
                 <View style={styles.section}>
@@ -483,26 +469,6 @@ function createStyles(colors: AppColors) {
             fontSize: 28, 
             fontWeight: "800",
             maxWidth: 280
-        },
-        notifcationButton: {
-            position: "relative",
-            width: 46,
-            height: 46,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: colors.surface,
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 23,
-        },
-        notifcationDot: {
-            position: "absolute",
-            top: 11,
-            right: 11,
-            width: 7,
-            height: 7,
-            backgroundColor: colors.clay,
-            borderRadius: 4,
         },
         pressed: {
             opacity: 0.88
