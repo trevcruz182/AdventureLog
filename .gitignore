@@ -47,3 +47,6 @@ backend/.coverage
 *.db
 *.sqlite
 *.sqlite3
+
+# Unselected raw portfolio screenshots
+docs/screenshots/raw

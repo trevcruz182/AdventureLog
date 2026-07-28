@@ -11,7 +11,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.trevorcruz.adventurelog"
+      "bundleIdentifier": "com.trevorcruz.adventurelog",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.trevorcruz.adventurelog",

@@ -8,9 +8,23 @@ The app is designed around remembering experiences rather than tracking public r
 
 ## Project status
 
-AdventureLog is currently a portfolio MVP under active development.
+AdventureLog is a complete portfolio MVP with a deployed FastAPI backend, hosted PostgreSQL database, cloud media storage, and a standalone Expo preview build.
 
-The main product workflows are complete and tested locally. Production deployment and final App Store-style screenshots are still in progress.
+The primary workflows have passed automated checks, migration validation, and manual end-to-end testing against the deployed environment.
+
+## App preview
+
+<p align="center">
+    <img src="docs/screenshots/home.png" alt="AdventureLog Home screen in dark mode" width="30%" />
+    <img src="docs/screenshots/journal.png" alt="Searchable and filterable Adventure Journal" width="30%" />
+    <img src="docs/screenshots/map.png" alt="Adventure map with category markers and selected memory preview" width="30%" />
+</p>
+
+<p align="center">
+    <img src="docs/screenshots/detail.png" alt="Photo-led adventure detail screen" width="30%" />
+    <img src="docs/screenshots/collections.png" alt="Adventure collections with progress goals" width="30%" />
+    <img src="docs/screenshots/collection-detail.png" alt="Adventure collection detail page with currently added adventures" width="30%" />
+</p>
 
 ## Features
 
@@ -121,6 +135,19 @@ Temporary photo paths are deliberately excluded from restored drafts because dev
 - Cloudinary authenticated server-side uploads
 - User-scoped Cloudinary folders
 - Stored public IDs for asset cleanup
+
+## Deployment
+
+- **Mobile builds:** Expo Application Services
+- **Backend API:** FastAPI Cloud
+- **PostgreSQL:** Neon
+- **Photo storage:** Cloudinary
+
+The mobile preview build communicates with the hosted API over HTTPS. FastAPI owns authentication, authorization, database access, and media credentials.
+
+The free hosted services may scale to zero during inactivity, so the first request after an idle period can take longer than subsequent requests.
+
+API documentation: [AdventureLog API](https://adventurelog-api.fastapicloud.dev/docs)
 
 ## Architecture
 
@@ -331,7 +358,7 @@ Adventure and collection routes require a valid access token. Database queries a
 
 ### Personal rather than social
 
-AdventureLog intentionally dos not include a public feed, followers, messaging, public reviews, or leaderboards. The MVP focuses on preserving a user's own experiences.
+AdventureLog intentionally does not include a public feed, followers, messaging, public reviews, or leaderboards. The MVP focuses on preserving a user's own experiences.
 
 ### Mobile-first interaction
 
@@ -347,29 +374,29 @@ Images pass through FastAPI before reaching Cloudinary. This keeps upload creden
 
 ### Deliberate scope
 
-The project demonstrates full-stack and mobile-specific development without adding systems that would not improve the core portfolio story. Features such as social networking, live location sharing, AI recommentations, booking, and competitive leaderboards remain outside the MVP.
+The project demonstrates full-stack and mobile-specific development without adding systems that would not improve the core portfolio story. Features such as social networking, live location sharing, AI recommendations, booking, and competitive leaderboards remain outside the MVP.
 
 ## Current limitations
 
-- Final adventure submission requires a network connection
+- Final adventure submission and photo uploads requires a network connection
 - Selected photos are not restored with offline drafts
 - Reminders are local to the current device
 - Location search uses platform geocoding and may vary by device
-- The backend and database are not yet publicly deployed
-- The app has not been submitted to an app store
+- Free hosted services may have cold-start delays after inactivity
+- The iOS standalone build currently targets the Simulator
+- The app has not been submitted to the Apple App Store or Google Play Store
 
 ## Future improvements
 
-Possible post-MVP improvemetns include:
+Possible post-MVP improvements include:
 
-- Production backend and PostgreSQL deployment
-- Cloud build and installable development release
-- Custom app icon and splash artwork
-- Final device screenshots
+- Installable Android preview build
+- App Store and Play Store distribution
 - Additional API tests for media failure handling
-- Improved image delivery sizes and thumbnails
-- Optional data export
-- Accessibility audit
+- Responsive image thumbnails for list and map previews
+- Optional user data export
+- Accessibility audit and screen-reader refinements
+- Expanded achievement and collection options
 
 ## Portfolio purpose
 
