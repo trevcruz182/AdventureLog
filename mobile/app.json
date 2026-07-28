@@ -6,13 +6,15 @@
     "description": "A personal mobile journal for preserving adventures, places, photos, and meaningful memories.",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "adventureLog",
+    "scheme": "adventurelog",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.trevorcruz.adventurelog"
     },
     "android": {
+      "package": "com.trevorcruz.adventurelog",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
