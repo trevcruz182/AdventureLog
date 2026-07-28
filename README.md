@@ -26,6 +26,12 @@ The primary workflows have passed automated checks, migration validation, and ma
     <img src="docs/screenshots/collection-detail.png" alt="Adventure collection detail page with currently added adventures" width="30%" />
 </p>
 
+<p align="center">
+    <a href="https://github.com/trevcruz182/AdventureLog/releases/download/v1.0.0/adventurelog-demo.mov">
+        <strong>▶ Watch the 80-second AdventureLog demo</strong>
+    </a>
+</p>
+
 ## Features
 
 ### Adventure journal 
